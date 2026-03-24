@@ -6,6 +6,12 @@ import Link from "next/link";
 import { PILLAR_LABELS } from "@/lib/types";
 import type { Topic, UserTopic, Note, AiReview } from "@/lib/types";
 import { saveNote, markTopicDone, markTopicInProgress, runGapAnalysis } from "./actions";
+import dynamic from "next/dynamic";
+
+const RichEditor = dynamic(
+  () => import("@/components/editor/rich-editor").then((m) => m.RichEditor),
+  { ssr: false, loading: () => <div className="min-h-[280px] rounded-lg bg-base border border-line animate-pulse" /> }
+);
 
 interface Props {
   topic: Topic;
@@ -32,8 +38,8 @@ export function TopicEditor({
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setContent(e.target.value);
+  function handleChange(html: string) {
+    setContent(html);
     setIsDirty(true);
     setError(null);
   }
@@ -165,26 +171,20 @@ export function TopicEditor({
       )}
 
       {/* Notes section */}
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <p className="text-[13px] font-medium text-ink">Notes</p>
         <p className="font-mono text-[10px] text-ink-muted">
-          Markdown supported
+          Type <kbd className="px-1 py-0.5 rounded bg-hover border border-line text-[10px]">/</kbd> for commands
         </p>
       </div>
 
-      <textarea
-        value={content}
-        onChange={handleChange}
-        placeholder={`Write your notes on ${topic.title} here…\n\nIncludes code snippets, key concepts, and your understanding.`}
-        className="
-          w-full min-h-[240px] px-4 py-3 rounded-lg
-          bg-base border border-line
-          font-mono text-[13px] text-ink-dim leading-relaxed
-          placeholder:text-ink-faint
-          focus:outline-none focus:border-line-subtle resize-y
-          transition-colors
-        "
-      />
+      <div className="rounded-lg border border-line px-5 py-4 focus-within:border-line-subtle transition-colors min-h-[280px]">
+        <RichEditor
+          content={content}
+          onChange={handleChange}
+          placeholder={`Write your notes on ${topic.title}…\n\nType / to insert headings, lists, code blocks, tables, and more.`}
+        />
+      </div>
 
       {error && (
         <p className="mt-2 text-[12px] text-red-600">{error}</p>

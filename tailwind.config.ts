@@ -48,57 +48,44 @@ const config: Config = {
         // ── Leveld Design Tokens (PRD §14.3) ────────────────────────────
 
         // Backgrounds
-        // bg-base        → app background, sidebar
-        // bg-surface     → main content panel, cards
-        // bg-hover       → hover state on rows and nav items
-        // bg-active      → selected / active item
-        base: "#fafaf9",
+        base: "#ffffff",
         surface: "#ffffff",
-        hover: "#f4f2ee",
-        active: "#f0eee9",
+        hover: "#f5f6f8",
+        active: "#ebebed",
 
         // Borders
-        // border-line           → all borders and dividers
-        // border-line-subtle    → hover borders, input focus
         line: {
-          DEFAULT: "#eeece8",
-          subtle: "#ddd9d4",
+          DEFAULT: "#e4e4e7",
+          subtle: "#d1d5db",
         },
 
         // Text
-        // text-ink          → headings, active labels
-        // text-ink-dim      → body text, topic names (text.secondary)
-        // text-ink-muted    → timestamps, metadata
-        // text-ink-faint    → done items, placeholders (text.disabled)
         ink: {
-          DEFAULT: "#1a1a1a",
-          dim: "#888480",
-          muted: "#b0ada8",
-          faint: "#c0bdb8",
+          DEFAULT: "#111827",
+          dim: "#52525b",
+          muted: "#a1a1aa",
+          faint: "#d4d4d8",
         },
 
         // Accent — purple
-        // text-purple / bg-purple  → primary CTA, progress, streak, active
-        // bg-purple-light          → accent background tint
-        // border-purple-border     → accent border
         purple: {
-          DEFAULT: "#6c5ce7",
-          light: "#f0eeff",
-          border: "#ddd9ff",
+          DEFAULT: "#7c3aed",
+          light: "#f5f3ff",
+          border: "#ddd6fe",
         },
 
         // Status — green (in-progress)
         "status-green": {
-          DEFAULT: "#2d7a3a",
-          bg: "#f0fff4",
-          border: "#c3e6cb",
+          DEFAULT: "#16a34a",
+          bg: "#f0fdf4",
+          border: "#bbf7d0",
         },
 
         // Status — amber (up next / review due)
         "status-amber": {
-          DEFAULT: "#b07030",
-          bg: "#fff8f0",
-          border: "#f0d8b0",
+          DEFAULT: "#d97706",
+          bg: "#fffbeb",
+          border: "#fde68a",
         },
       },
 
