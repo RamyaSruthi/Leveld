@@ -5,6 +5,7 @@ import { Nav } from "@/components/nav";
 import { PILLAR_LABELS, PILLAR_ORDER, PILLAR_COLORS } from "@/lib/types";
 import { AddTopicForm } from "./add-topic-form";
 import { TopicRow } from "./topic-row";
+import { ImportNeetcodeButton } from "./import-neetcode-button";
 import type { Pillar, TopicWithProgress } from "@/lib/types";
 
 interface Props {
@@ -77,11 +78,14 @@ export default async function PillarPage({ params }: Props) {
           <h1 className="text-[20px] font-semibold text-ink tracking-tight">
             {PILLAR_LABELS[pillar]}
           </h1>
-          {topicsWithProgress.length > 0 && (
-            <span className="font-mono text-[12px] text-ink-muted ml-auto">
-              {done}/{topicsWithProgress.length} · {pct}%
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-3">
+            {pillar === "dsa" && <ImportNeetcodeButton userId={user.id} />}
+            {topicsWithProgress.length > 0 && (
+              <span className="font-mono text-[12px] text-ink-muted">
+                {done}/{topicsWithProgress.length} · {pct}%
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Progress bar */}
