@@ -48,7 +48,7 @@ export async function saveNote({
       topic_id: topicId,
       status: "in_progress",
       last_studied_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'user_id,topic_id' });
   } else {
     await supabase
       .from("user_topics")
@@ -82,7 +82,69 @@ export async function markTopicDone({
     next_review_at: nextReview.toISOString(),
     interval_days: 1,
     review_count: 0,
-  });
+  }, { onConflict: 'user_id,topic_id' });
+
+  revalidatePath("/", "layout");
+}
+
+// ── Review topic (SM-2 spaced repetition) ────────────────────────────────────
+
+export async function reviewTopic({
+  userId,
+  topicId,
+  quality,           // 0 = forgot, 3 = hard, 4 = good, 5 = easy
+  currentInterval,
+  currentEasiness,
+  currentReviewCount,
+}: {
+  userId: string;
+  topicId: string;
+  quality: number;
+  currentInterval: number;
+  currentEasiness: number;
+  currentReviewCount: number;
+}) {
+  const supabase = await createClient();
+  const now = new Date();
+
+  let newInterval: number;
+  let newReviewCount: number;
+
+  if (quality < 3) {
+    // Failed recall — reset the schedule
+    newInterval = 1;
+    newReviewCount = 0;
+  } else {
+    // Successful recall — apply SM-2 interval progression
+    if (currentReviewCount === 0) {
+      newInterval = 1;
+    } else if (currentReviewCount === 1) {
+      newInterval = 6;
+    } else {
+      newInterval = Math.round(currentInterval * currentEasiness);
+    }
+    newReviewCount = currentReviewCount + 1;
+  }
+
+  // Update easiness factor (clamped to minimum 1.3)
+  const newEasiness = Math.max(
+    1.3,
+    currentEasiness + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
+  );
+
+  const nextReview = new Date(now);
+  nextReview.setDate(nextReview.getDate() + newInterval);
+
+  await supabase.from("user_topics").upsert({
+    user_id: userId,
+    topic_id: topicId,
+    status: "done",
+    last_studied_at: now.toISOString(),
+    next_review_at: nextReview.toISOString(),
+    interval_days: newInterval,
+    easiness_factor: newEasiness,
+    review_count: newReviewCount,
+  }, { onConflict: 'user_id,topic_id' });
 
   revalidatePath("/", "layout");
 }
@@ -103,7 +165,7 @@ export async function markTopicInProgress({
     topic_id: topicId,
     status: "in_progress",
     next_review_at: null,
-  });
+  }, { onConflict: 'user_id,topic_id' });
 
   revalidatePath("/", "layout");
 }

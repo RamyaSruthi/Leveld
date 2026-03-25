@@ -22,7 +22,7 @@ export async function toggleTopicDone({
       topic_id: topicId,
       status: "in_progress",
       next_review_at: null,
-    });
+    }, { onConflict: 'user_id,topic_id' });
   } else {
     const nextReview = new Date(now);
     nextReview.setDate(nextReview.getDate() + 1);
@@ -34,7 +34,7 @@ export async function toggleTopicDone({
       next_review_at: nextReview.toISOString(),
       interval_days: 1,
       review_count: 0,
-    });
+    }, { onConflict: 'user_id,topic_id' });
   }
 
   revalidatePath("/", "layout");

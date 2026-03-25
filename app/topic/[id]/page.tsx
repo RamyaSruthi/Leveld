@@ -55,7 +55,7 @@ export default async function TopicPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-base">
+    <div className="h-screen flex flex-col bg-white overflow-hidden">
       <Nav />
       <TopicEditor
         topic={topic}

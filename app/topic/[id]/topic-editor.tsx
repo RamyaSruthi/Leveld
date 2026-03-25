@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PILLAR_LABELS } from "@/lib/types";
 import type { Topic, UserTopic, Note, AiReview } from "@/lib/types";
-import { saveNote, markTopicDone, markTopicInProgress, runGapAnalysis } from "./actions";
+import { saveNote, markTopicDone, markTopicInProgress, runGapAnalysis, reviewTopic } from "./actions";
 import dynamic from "next/dynamic";
 
 const RichEditor = dynamic(
@@ -100,46 +100,141 @@ export function TopicEditor({
   }, [userTopic?.status]);
 
   const isDone = status === "done";
+  const isDueForReview =
+    isDone &&
+    userTopic?.next_review_at != null &&
+    new Date(userTopic.next_review_at) <= new Date();
+
+  function handleReview(quality: number) {
+    startTransition(async () => {
+      await reviewTopic({
+        userId,
+        topicId: topic.id,
+        quality,
+        currentInterval: userTopic?.interval_days ?? 1,
+        currentEasiness: userTopic?.easiness_factor ?? 2.5,
+        currentReviewCount: userTopic?.review_count ?? 0,
+      });
+      router.refresh();
+    });
+  }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 mb-6">
-        <Link
-          href="/curriculum"
-          className="font-mono text-[11px] text-ink-muted hover:text-ink transition-colors"
-        >
-          Curriculum
-        </Link>
-        <span className="text-ink-faint text-[11px]">/</span>
-        <Link
-          href={`/curriculum/${topic.pillar}`}
-          className="font-mono text-[11px] text-ink-muted hover:text-ink transition-colors"
-        >
-          {PILLAR_LABELS[topic.pillar]}
-        </Link>
-      </div>
+    <div className="flex-1 flex overflow-hidden">
 
-      {/* Topic header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-[20px] font-semibold text-ink tracking-tight mb-1">
+      {/* ── Left panel — topic details (25%) ─────────────────────────────── */}
+      <div className="w-64 xl:w-72 shrink-0 border-r border-line bg-base flex flex-col overflow-y-auto">
+        <div className="p-5 flex flex-col gap-5">
+
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1.5">
+            <Link
+              href="/curriculum"
+              className="font-mono text-[10px] text-ink-muted hover:text-ink transition-colors"
+            >
+              Curriculum
+            </Link>
+            <span className="text-ink-faint text-[10px]">/</span>
+            <Link
+              href={`/curriculum/${topic.pillar}`}
+              className="font-mono text-[10px] text-ink-muted hover:text-ink transition-colors"
+            >
+              {PILLAR_LABELS[topic.pillar]}
+            </Link>
+          </div>
+
+          {/* Title */}
+          <h1 className="text-[16px] font-semibold text-ink tracking-tight leading-snug">
             {topic.title}
           </h1>
+
+          {/* Source link */}
+          {topic.source_url && (
+            <a
+              href={topic.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-mono text-[11px] text-purple hover:opacity-75 transition-opacity -mt-2"
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="shrink-0">
+                <path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Open resource ↗
+            </a>
+          )}
+
+          {/* Description */}
           {topic.description && (
-            <p className="text-[13px] text-ink-dim leading-relaxed">
+            <p className="text-[12px] text-ink-dim leading-relaxed -mt-2">
               {topic.description}
             </p>
           )}
-        </div>
 
-        {/* Status actions */}
-        <div className="shrink-0 flex items-center gap-2">
-          {isDone ? (
+          {/* Status badge */}
+          {status !== "not_started" && (
+            <div>
+              {isDone ? (
+                <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-purple-light border border-purple-border text-purple">
+                  Done
+                </span>
+              ) : (
+                <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-status-green-bg border border-status-green-border text-status-green">
+                  In progress
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Review UI (due) or Mark done/undone */}
+          {isDueForReview ? (
+            <div className="flex flex-col gap-2">
+              <p className="font-mono text-[10px] text-status-amber uppercase tracking-widest">
+                Review due
+              </p>
+              <p className="text-[11px] text-ink-dim">How well did you recall this?</p>
+              <div className="flex flex-col gap-1.5">
+                <button
+                  onClick={() => handleReview(1)}
+                  disabled={isPending}
+                  className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  Forgot
+                </button>
+                <button
+                  onClick={() => handleReview(3)}
+                  disabled={isPending}
+                  className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-status-amber-border text-status-amber hover:bg-status-amber-bg transition-colors disabled:opacity-50"
+                >
+                  Hard
+                </button>
+                <button
+                  onClick={() => handleReview(4)}
+                  disabled={isPending}
+                  className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-status-green-border text-status-green hover:bg-status-green-bg transition-colors disabled:opacity-50"
+                >
+                  Good
+                </button>
+                <button
+                  onClick={() => handleReview(5)}
+                  disabled={isPending}
+                  className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-purple text-purple hover:bg-purple hover:text-white transition-colors disabled:opacity-50"
+                >
+                  Easy
+                </button>
+              </div>
+              <button
+                onClick={handleMarkInProgress}
+                disabled={isPending}
+                className="font-mono text-[10px] text-ink-muted hover:text-ink transition-colors text-left"
+              >
+                Mark undone
+              </button>
+            </div>
+          ) : isDone ? (
             <button
               onClick={handleMarkInProgress}
               disabled={isPending}
-              className="font-mono text-[11px] px-3 py-1.5 rounded-full border border-line text-ink-muted hover:text-ink hover:border-line-subtle transition-colors"
+              className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-line text-ink-muted hover:text-ink hover:border-line-subtle transition-colors"
             >
               Mark undone
             </button>
@@ -147,164 +242,125 @@ export function TopicEditor({
             <button
               onClick={handleMarkDone}
               disabled={isPending}
-              className="font-mono text-[11px] px-3 py-1.5 rounded-full border border-purple text-purple hover:bg-purple hover:text-white transition-colors"
+              className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-purple text-purple hover:bg-purple hover:text-white transition-colors"
             >
               {status === "not_started" ? "Mark done" : "Mark done ✓"}
             </button>
           )}
         </div>
-      </div>
 
-      {/* Status badge */}
-      {status !== "not_started" && (
-        <div className="mb-6">
-          {isDone ? (
-            <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-purple-light border border-purple-border text-purple">
-              Done
-            </span>
-          ) : (
-            <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-status-green-bg border border-status-green-border text-status-green">
-              In progress
-            </span>
-          )}
-        </div>
-      )}
+        {/* AI Gap Analysis */}
+        {(aiReview || analysisRunning) && (
+          <div className="px-5 pt-5 mt-2 border-t border-line flex flex-col gap-5">
+            {analysisRunning ? (
+              <p className="text-[11px] text-ink-muted font-mono">Analysing…</p>
+            ) : aiReview ? (
+              <>
+                <p className="text-[10px] font-mono text-ink-muted uppercase tracking-widest">
+                  AI Gap Analysis
+                </p>
 
-      {/* Notes section */}
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-[13px] font-medium text-ink">Notes</p>
-        <p className="font-mono text-[10px] text-ink-muted">
-          Type <kbd className="px-1 py-0.5 rounded bg-hover border border-line text-[10px]">/</kbd> for commands
-        </p>
-      </div>
-
-      <div className="rounded-lg border border-line px-5 py-4 focus-within:border-line-subtle transition-colors min-h-[280px]">
-        <RichEditor
-          content={content}
-          onChange={handleChange}
-          placeholder={`Write your notes on ${topic.title}…\n\nType / to insert headings, lists, code blocks, tables, and more.`}
-        />
-      </div>
-
-      {error && (
-        <p className="mt-2 text-[12px] text-red-600">{error}</p>
-      )}
-
-      {isDirty && (
-        <button
-          onClick={handleSave}
-          disabled={isPending}
-          className="
-            mt-3 px-4 py-2 rounded-md text-[12px] font-medium
-            bg-purple text-white
-            disabled:opacity-50 hover:opacity-90 transition-opacity
-          "
-        >
-          {isPending ? "Saving…" : "Save notes"}
-        </button>
-      )}
-
-      {/* AI Gap Analysis */}
-      {(aiReview || analysisRunning) && (
-        <div className="mt-8 pt-6 border-t border-line">
-          {analysisRunning ? (
-            <p className="text-[12px] text-ink-muted font-mono">
-              Analysing your notes…
-            </p>
-          ) : aiReview ? (
-            <div className="space-y-6">
-              <p className="text-[11px] font-mono text-ink-muted uppercase tracking-widest">
-                AI Gap Analysis
-              </p>
-
-              {/* Gaps */}
-              {aiReview.gaps && aiReview.gaps.length > 0 && (
-                <div>
-                  <p className="text-[13px] font-medium text-ink mb-2">
-                    Gaps identified
-                  </p>
-                  <ul className="space-y-1.5">
-                    {aiReview.gaps.map((gap, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-status-amber shrink-0" />
-                        <span className="text-[13px] text-ink-dim leading-relaxed">
-                          {gap}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Expected questions */}
-              {aiReview.expected_questions && aiReview.expected_questions.length > 0 && (
-                <div>
-                  <p className="text-[13px] font-medium text-ink mb-2">
-                    Expected interview questions
-                  </p>
-                  <ol className="space-y-2">
-                    {aiReview.expected_questions.map((q, i) => (
-                      <li key={i} className="flex items-start gap-2.5">
-                        <span className="font-mono text-[11px] text-ink-muted shrink-0 mt-0.5">
-                          {i + 1}.
-                        </span>
-                        <span className="text-[13px] text-ink-dim leading-relaxed">
-                          {q}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {/* Study next */}
-              {aiReview.next_topics && aiReview.next_topics.length > 0 && (
-                <div>
-                  <p className="text-[13px] font-medium text-ink mb-2">
-                    Study next
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {aiReview.next_topics.map((t, i) => (
-                      <span
-                        key={i}
-                        className="
-                          font-mono text-[11px] px-3 py-1.5 rounded-full
-                          bg-purple-light border border-purple-border text-purple
-                        "
-                      >
-                        {t}
-                      </span>
-                    ))}
+                {aiReview.gaps && aiReview.gaps.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-medium text-ink mb-2">Gaps</p>
+                    <ul className="space-y-2">
+                      {aiReview.gaps.map((gap, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-status-amber shrink-0" />
+                          <span className="text-[11px] text-ink-dim leading-relaxed">{gap}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Regenerate */}
-              {savedNoteId && (
-                <button
-                  onClick={() => savedNoteId && handleGapAnalysis(savedNoteId)}
-                  disabled={analysisRunning}
-                  className="font-mono text-[11px] text-ink-muted hover:text-ink transition-colors"
-                >
-                  Regenerate analysis ↻
-                </button>
-              )}
-            </div>
-          ) : null}
-        </div>
-      )}
+                {aiReview.expected_questions && aiReview.expected_questions.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-medium text-ink mb-2">Expected questions</p>
+                    <ol className="space-y-2">
+                      {aiReview.expected_questions.map((q, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="font-mono text-[10px] text-ink-muted shrink-0 mt-0.5">{i + 1}.</span>
+                          <span className="text-[11px] text-ink-dim leading-relaxed">{q}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
 
-      {/* Prompt to save first */}
-      {!aiReview && !analysisRunning && content && !isDirty && savedNoteId && (
-        <div className="mt-8 pt-6 border-t border-line">
-          <button
-            onClick={() => handleGapAnalysis(savedNoteId)}
-            className="font-mono text-[11px] text-ink-muted hover:text-ink transition-colors"
-          >
-            Run AI gap analysis ↻
-          </button>
+                {aiReview.next_topics && aiReview.next_topics.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-medium text-ink mb-2">Study next</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {aiReview.next_topics.map((t, i) => (
+                        <span key={i} className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-purple-light border border-purple-border text-purple">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {savedNoteId && (
+                  <button
+                    onClick={() => handleGapAnalysis(savedNoteId)}
+                    disabled={analysisRunning}
+                    className="font-mono text-[10px] text-ink-muted hover:text-ink transition-colors pb-4"
+                  >
+                    Regenerate ↻
+                  </button>
+                )}
+              </>
+            ) : null}
+          </div>
+        )}
+
+        {/* Prompt to run analysis */}
+        {!aiReview && !analysisRunning && content && !isDirty && savedNoteId && (
+          <div className="px-5 pt-5 mt-2 border-t border-line">
+            <button
+              onClick={() => handleGapAnalysis(savedNoteId)}
+              className="font-mono text-[10px] text-ink-muted hover:text-ink transition-colors"
+            >
+              Run AI gap analysis ↻
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Right panel — editor (75%) ────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-10 pt-5 pb-1 shrink-0">
+          <p className="font-mono text-[10px] text-ink-faint">
+            Type <kbd className="px-1 py-0.5 rounded bg-hover border border-line text-[10px]">/</kbd> for headings, lists, code blocks and more
+          </p>
         </div>
-      )}
+
+        <div className="flex-1 overflow-y-auto px-10 py-4">
+          <RichEditor
+            content={content}
+            onChange={handleChange}
+            placeholder={`Write your notes on ${topic.title}…`}
+          />
+        </div>
+
+        {error && (
+          <p className="px-10 pb-1 text-[12px] text-red-600">{error}</p>
+        )}
+
+        {isDirty && (
+          <div className="px-10 py-3 border-t border-line shrink-0">
+            <button
+              onClick={handleSave}
+              disabled={isPending}
+              className="px-4 py-2 rounded-md text-[12px] font-medium bg-purple text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+            >
+              {isPending ? "Saving…" : "Save notes"}
+            </button>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

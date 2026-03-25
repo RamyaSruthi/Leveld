@@ -135,3 +135,47 @@ CREATE TABLE IF NOT EXISTS public.mock_sessions (
 ALTER TABLE public.mock_sessions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own mock sessions" ON public.mock_sessions
   FOR ALL USING (auth.uid() = user_id);
+
+-- ── job_applications ───────────────────────────────────────────────────────────
+
+CREATE TYPE application_status AS ENUM (
+  'applied', 'screening', 'interviewing', 'offer', 'rejected', 'withdrawn'
+);
+
+CREATE TYPE round_outcome AS ENUM ('pending', 'passed', 'failed');
+
+CREATE TABLE IF NOT EXISTS public.job_applications (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  company         TEXT NOT NULL,
+  role            TEXT NOT NULL,
+  status          application_status NOT NULL DEFAULT 'applied',
+  applied_at      DATE DEFAULT CURRENT_DATE,
+  job_url         TEXT,
+  contact_name    TEXT,
+  contact_email   TEXT,
+  contact_linkedin TEXT,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.job_applications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own applications" ON public.job_applications
+  FOR ALL USING (auth.uid() = user_id);
+
+-- ── interview_rounds ───────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.interview_rounds (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  application_id  UUID NOT NULL REFERENCES public.job_applications(id) ON DELETE CASCADE,
+  user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name            TEXT NOT NULL,
+  scheduled_at    TIMESTAMPTZ,
+  outcome         round_outcome NOT NULL DEFAULT 'pending',
+  notes           TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.interview_rounds ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own rounds" ON public.interview_rounds
+  FOR ALL USING (auth.uid() = user_id);

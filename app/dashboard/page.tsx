@@ -67,6 +67,7 @@ export default async function DashboardPage() {
 
   const hasAnyTopics = totalTopics > 0;
 
+
   return (
     <div className="min-h-screen bg-base">
       <Nav />
@@ -147,12 +148,13 @@ export default async function DashboardPage() {
             </div>
           )}
 
+
           {/* Due reviews */}
-          {dueReviews.length > 0 && (
-            <section>
-              <p className="text-[11px] font-mono text-ink-muted uppercase tracking-widest mb-3">
-                Due for review · {dueReviews.length}
-              </p>
+          <section>
+            <p className="text-[11px] font-mono text-ink-muted uppercase tracking-widest mb-3">
+              Due for review {dueReviews.length > 0 && `· ${dueReviews.length}`}
+            </p>
+            {dueReviews.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {dueReviews.map((t) => (
                   <Link
@@ -168,8 +170,10 @@ export default async function DashboardPage() {
                   </Link>
                 ))}
               </div>
-            </section>
-          )}
+            ) : (
+              <p className="text-[12px] text-ink-muted">Nothing due for review today ✓</p>
+            )}
+          </section>
 
           {/* Pillar sections */}
           {PILLAR_ORDER.map((pillar) => {

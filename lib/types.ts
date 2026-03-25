@@ -111,6 +111,64 @@ export interface Note {
   created_at: string;
 }
 
+export type ApplicationStatus =
+  | "applied"
+  | "screening"
+  | "interviewing"
+  | "offer"
+  | "rejected"
+  | "withdrawn"
+  | "ghosted";
+
+export type RoundOutcome = "pending" | "passed" | "failed";
+
+export interface JobApplication {
+  id: string;
+  user_id: string;
+  company: string;
+  role: string;
+  status: ApplicationStatus;
+  applied_at: string | null;
+  job_url: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_linkedin: string | null;
+  notes: string | null;
+  compensation_asked: string | null;
+  comp_asked_base: string | null;
+  comp_asked_joining_bonus: string | null;
+  comp_asked_esop: string | null;
+  comp_asked_relocation: string | null;
+  compensation_final: string | null;
+  comp_final_base: string | null;
+  comp_final_joining_bonus: string | null;
+  comp_final_esop: string | null;
+  comp_final_relocation: string | null;
+  created_at: string;
+}
+
+export interface InterviewRound {
+  id: string;
+  application_id: string;
+  user_id: string;
+  name: string;
+  scheduled_at: string | null;
+  outcome: RoundOutcome;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface InterviewQuestion {
+  id: string;
+  user_id: string;
+  application_id: string;
+  round_id: string;
+  question: string;
+  answer: string | null;
+  created_at: string;
+}
+
 export interface AiReview {
   id: string;
   note_id: string;
