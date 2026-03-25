@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extension-placeholder";
@@ -63,14 +64,22 @@ export function RichEditor({ content, onChange, placeholder }: Props) {
           if (item.type.startsWith("image/")) {
             const file = item.getAsFile();
             if (!file) continue;
-            const reader = new FileReader();
-            reader.onload = () => {
-              const src = reader.result as string;
-              const node = view.state.schema.nodes.image.create({ src });
-              const tr = view.state.tr.replaceSelectionWith(node);
-              view.dispatch(tr);
-            };
-            reader.readAsDataURL(file);
+            // Upload to Supabase Storage, insert URL instead of base64
+            const ext = file.type.split("/")[1] ?? "png";
+            const path = `note-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+            const supabase = createClient();
+            supabase.storage
+              .from("note-images")
+              .upload(path, file, { contentType: file.type })
+              .then(({ data, error }) => {
+                if (error || !data) return;
+                const { data: { publicUrl } } = supabase.storage
+                  .from("note-images")
+                  .getPublicUrl(data.path);
+                const node = view.state.schema.nodes.image.create({ src: publicUrl });
+                const tr = view.state.tr.replaceSelectionWith(node);
+                view.dispatch(tr);
+              });
             return true;
           }
         }
