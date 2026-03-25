@@ -122,7 +122,7 @@ export function ConversionFunnel({
       { label: "Round 3+",  count: r3,        color: "#00cec9" },
       { label: "Offer",     count: offers,    color: "#fdcb6e" },
     ].filter((s) => s.count > 0);
-  }, [applications, roundCounts, passedCounts]);
+  }, [applications, passedCounts]);
 
   if (stages.length === 0) return null;
 

@@ -84,7 +84,7 @@ export function ApplicationsList({ apps, roundCounts, roundsByApp, nextInterview
 
   // Filter + sort
   const visible = useMemo(() => {
-    let list = statusFilter ? apps.filter((a) => a.status === statusFilter) : [...apps];
+    const list = statusFilter ? apps.filter((a) => a.status === statusFilter) : [...apps];
 
     switch (sortKey) {
       case "newest":

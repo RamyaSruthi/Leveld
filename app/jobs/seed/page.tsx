@@ -44,7 +44,7 @@ export default async function SeedPage() {
   }
 
   // Map company → id for round insertion
-  const idOf = (company: string) => apps.find((a) => a.company === company)?.id!;
+  const idOf = (company: string) => apps.find((a) => a.company === company)?.id ?? "";
 
   // ── 2. Insert interview rounds ────────────────────────────────────────────
   // Google  – 2 rounds, passed both, still rejected after
