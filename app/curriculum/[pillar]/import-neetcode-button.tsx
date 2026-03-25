@@ -10,19 +10,16 @@ export function ImportNeetcodeButton({ userId }: { userId: string }) {
 
   function handleImport() {
     startTransition(async () => {
-      try {
-        await importNeetcode150({ userId });
+      const result = await importNeetcode150({ userId });
+      if (result.ok) {
         setStatus("done");
         setTimeout(() => setStatus("idle"), 3000);
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg.includes("already imported")) {
-          setStatus("exists");
-          setTimeout(() => setStatus("idle"), 3000);
-        } else {
-          setErrorMsg(msg);
-          setStatus("error");
-        }
+      } else if (result.message === "already imported") {
+        setStatus("exists");
+        setTimeout(() => setStatus("idle"), 3000);
+      } else {
+        setErrorMsg(result.message);
+        setStatus("error");
       }
     });
   }

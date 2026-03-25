@@ -92,7 +92,7 @@ export async function createTopic({
   revalidatePath("/", "layout");
 }
 
-export async function importNeetcode150({ userId }: { userId: string }) {
+export async function importNeetcode150({ userId }: { userId: string }): Promise<{ ok: boolean; message: string }> {
   const supabase = await createClient();
 
   // Check if already imported
@@ -103,7 +103,7 @@ export async function importNeetcode150({ userId }: { userId: string }) {
     .eq("roadmap", "Neetcode 150")
     .limit(1);
 
-  if (existing && existing.length > 0) throw new Error("Neetcode 150 already imported.");
+  if (existing && existing.length > 0) return { ok: false, message: "already imported" };
 
   const problems: { title: string; tag: string; source_url: string }[] = [
     // Arrays & Hashing
@@ -287,9 +287,10 @@ export async function importNeetcode150({ userId }: { userId: string }) {
   }));
 
   const { error } = await supabase.from("topics").insert(payload);
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: error.message };
   revalidatePath("/curriculum/dsa");
   revalidatePath("/dashboard");
+  return { ok: true, message: "imported" };
 }
 
 export async function deleteTopic({ topicId, userId }: { topicId: string; userId: string }) {
