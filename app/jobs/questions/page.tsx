@@ -47,7 +47,7 @@ export default async function QuestionsPage() {
 
   return (
     <div className="min-h-screen bg-base">
-      <Nav />
+      <Nav userEmail={user?.email} />
       <div className="max-w-3xl mx-auto px-6 py-8">
 
         {/* Header */}

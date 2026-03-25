@@ -22,17 +22,11 @@ export default async function DashboardPage() {
 
   if (!profile?.start_date) redirect("/onboarding");
 
-  // Fetch user's own topics + progress
-  const { data: topics } = await supabase
-    .from("topics")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("order_index");
-
-  const { data: userTopics } = await supabase
-    .from("user_topics")
-    .select("*")
-    .eq("user_id", user.id);
+  // Fetch topics + progress in parallel
+  const [{ data: topics }, { data: userTopics }] = await Promise.all([
+    supabase.from("topics").select("*").eq("user_id", user.id).order("order_index"),
+    supabase.from("user_topics").select("*").eq("user_id", user.id),
+  ]);
 
   const progressMap = new Map(
     (userTopics ?? []).map((ut) => [ut.topic_id, ut])
@@ -70,7 +64,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-base">
-      <Nav />
+      <Nav userEmail={user?.email} />
 
       <div className="max-w-5xl mx-auto px-6 py-8 flex gap-8">
         {/* ── Sidebar ── */}

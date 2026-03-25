@@ -52,7 +52,7 @@ export default async function PillarPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-base">
-      <Nav />
+      <Nav userEmail={user?.email} />
       <div className="max-w-3xl mx-auto px-6 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 mb-4">

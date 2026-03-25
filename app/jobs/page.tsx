@@ -12,17 +12,10 @@ export default async function JobsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  const { data: applications } = await supabase
-    .from("job_applications")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  const { data: rounds } = await supabase
-    .from("interview_rounds")
-    .select("application_id, outcome, scheduled_at, name")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: true });
+  const [{ data: applications }, { data: rounds }] = await Promise.all([
+    supabase.from("job_applications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+    supabase.from("interview_rounds").select("application_id, outcome, scheduled_at, name").eq("user_id", user.id).order("created_at", { ascending: true }),
+  ]);
 
   // Rounds per app (ordered) for dots + funnel
   const roundsByApp: Record<string, { outcome: RoundOutcome }[]> = {};
@@ -76,7 +69,7 @@ export default async function JobsPage() {
 
   return (
     <div className="min-h-screen bg-base">
-      <Nav />
+      <Nav userEmail={user?.email} />
       <div className="max-w-5xl mx-auto px-6 py-8">
 
         {/* Header */}

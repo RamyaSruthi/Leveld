@@ -35,7 +35,7 @@ export default async function CurriculumPage() {
 
   return (
     <div className="min-h-screen bg-base">
-      <Nav />
+      <Nav userEmail={user?.email} />
       <div className="max-w-3xl mx-auto px-6 py-8">
         <h1 className="text-[20px] font-semibold text-ink mb-1 tracking-tight">
           Curriculum

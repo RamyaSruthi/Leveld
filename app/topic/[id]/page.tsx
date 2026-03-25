@@ -56,7 +56,7 @@ export default async function TopicPage({ params }: Props) {
 
   return (
     <div className="h-screen flex flex-col bg-white overflow-hidden">
-      <Nav />
+      <Nav userEmail={user?.email} />
       <TopicEditor
         topic={topic}
         userTopic={userTopic ?? null}

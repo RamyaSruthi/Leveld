@@ -34,7 +34,7 @@ export default async function JobDetailPage({ params }: { params: { id: string }
 
   return (
     <div className="min-h-screen bg-base">
-      <Nav />
+      <Nav userEmail={user?.email} />
       <ApplicationDetail
         application={app as JobApplication}
         rounds={(rounds ?? []) as InterviewRound[]}
