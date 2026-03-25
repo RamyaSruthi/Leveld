@@ -98,11 +98,9 @@ export function PipelineDashboard({
 
 export function ConversionFunnel({
   applications,
-  roundCounts,
   passedCounts,
 }: {
   applications: JobApplication[];
-  roundCounts: Record<string, number>;
   passedCounts: Record<string, number>;
 }) {
   const stages = useMemo(() => {

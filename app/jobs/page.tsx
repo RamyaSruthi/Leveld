@@ -108,7 +108,7 @@ export default async function JobsPage() {
         {/* Conversion Funnel */}
         {apps.length > 1 && (
           <div className="mb-6">
-            <ConversionFunnel applications={apps} roundCounts={roundCountsObj} passedCounts={passedCountsObj} />
+            <ConversionFunnel applications={apps} passedCounts={passedCountsObj} />
           </div>
         )}
 
