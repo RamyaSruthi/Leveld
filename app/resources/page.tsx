@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/nav";
+import { getUserPillars } from "@/lib/pillars";
 import type { Resource } from "@/lib/types";
 import { ResourcesList } from "./resources-list";
 
@@ -12,11 +13,14 @@ export default async function ResourcesPage() {
 
   if (!user) redirect("/auth");
 
-  const { data: resources } = await supabase
-    .from("resources")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  const [{ data: resources }, pillars] = await Promise.all([
+    supabase
+      .from("resources")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    getUserPillars(user.id),
+  ]);
 
   return (
     <div className="min-h-screen bg-base">
@@ -35,6 +39,7 @@ export default async function ResourcesPage() {
         <ResourcesList
           resources={(resources ?? []) as Resource[]}
           userId={user.id}
+          pillars={pillars}
         />
       </main>
     </div>

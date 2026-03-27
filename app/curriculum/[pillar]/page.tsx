@@ -5,7 +5,8 @@ import { Nav } from "@/components/nav";
 import { getUserPillars } from "@/lib/pillars";
 import { AddTopicForm } from "./add-topic-form";
 import { TopicRow } from "./topic-row";
-import type { TopicWithProgress } from "@/lib/types";
+import { PillarResources } from "./pillar-resources";
+import type { TopicWithProgress, Resource } from "@/lib/types";
 
 interface Props {
   params: { pillar: string };
@@ -32,10 +33,10 @@ export default async function PillarPage({ params }: Props) {
     .eq("user_id", user.id)
     .order("order_index");
 
-  const { data: userTopics } = await supabase
-    .from("user_topics")
-    .select("*")
-    .eq("user_id", user.id);
+  const [{ data: userTopics }, { data: pillarResources }] = await Promise.all([
+    supabase.from("user_topics").select("*").eq("user_id", user.id),
+    supabase.from("resources").select("*").eq("user_id", user.id).eq("pillar_slug", slug).order("created_at", { ascending: false }),
+  ]);
 
   const progressMap = new Map(
     (userTopics ?? []).map((ut) => [ut.topic_id, ut])
@@ -114,6 +115,13 @@ export default async function PillarPage({ params }: Props) {
 
           <AddTopicForm pillar={slug} userId={user.id} />
         </div>
+
+        {/* Pillar resources */}
+        <PillarResources
+          resources={(pillarResources ?? []) as Resource[]}
+          userId={user.id}
+          pillarSlug={slug}
+        />
       </div>
     </div>
   );

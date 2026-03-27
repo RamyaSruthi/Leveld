@@ -3,15 +3,17 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { RESOURCE_CATEGORIES } from "@/lib/types";
-import type { Resource, ResourceCategory } from "@/lib/types";
+import type { Resource, ResourceCategory, PillarConfig } from "@/lib/types";
 import { addResource, deleteResource } from "./actions";
 
 interface Props {
   resources: Resource[];
   userId: string;
+  pillars: PillarConfig[];
 }
 
-export function ResourcesList({ resources, userId }: Props) {
+export function ResourcesList({ resources, userId, pillars }: Props) {
+  const pillarMap = Object.fromEntries(pillars.map((p) => [p.slug, p]));
   const [activeTab, setActiveTab] = useState<ResourceCategory>("book");
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -184,6 +186,18 @@ export function ResourcesList({ resources, userId }: Props) {
                     </span>
                   )}
                 </div>
+                {r.pillar_slug && pillarMap[r.pillar_slug] && (
+                  <span
+                    className="inline-flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded-full border mt-1"
+                    style={{
+                      borderColor: pillarMap[r.pillar_slug].color + "40",
+                      color: pillarMap[r.pillar_slug].color,
+                      backgroundColor: pillarMap[r.pillar_slug].color + "10",
+                    }}
+                  >
+                    {pillarMap[r.pillar_slug].label}
+                  </span>
+                )}
                 {r.description && (
                   <p className="text-[12px] text-ink-muted mt-1 leading-relaxed">
                     {r.description}

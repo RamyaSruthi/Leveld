@@ -200,5 +200,6 @@ export interface Resource {
   title: string;
   url: string | null;
   description: string | null;
+  pillar_slug: string | null;
   created_at: string;
 }

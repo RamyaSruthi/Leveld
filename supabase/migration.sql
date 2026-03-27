@@ -208,6 +208,7 @@ CREATE TABLE IF NOT EXISTS public.resources (
   title       TEXT NOT NULL,
   url         TEXT,
   description TEXT,
+  pillar_slug TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
