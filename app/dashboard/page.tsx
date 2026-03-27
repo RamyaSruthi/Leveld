@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/nav";
 import { getUserPillars } from "@/lib/pillars";
 import { pillarLabels, pillarColors } from "@/lib/types";
-import type { TopicWithProgress } from "@/lib/types";
+import type { TopicWithProgress, DailyTarget } from "@/lib/types";
+import { DailyTargets } from "./daily-targets";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -28,11 +29,25 @@ export default async function DashboardPage() {
   const colors = pillarColors(pillars);
   const slugs = pillars.map((p) => p.slug);
 
-  // Fetch topics + progress in parallel
-  const [{ data: topics }, { data: userTopics }] = await Promise.all([
-    supabase.from("topics").select("*").eq("user_id", user.id).order("order_index"),
-    supabase.from("user_topics").select("*").eq("user_id", user.id),
-  ]);
+  // Today's date in YYYY-MM-DD (user's local date is approximated by server date)
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Fetch topics, progress, and today's daily targets in parallel
+  const [{ data: topics }, { data: userTopics }, { data: dailyTargetRows }] =
+    await Promise.all([
+      supabase
+        .from("topics")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("order_index"),
+      supabase.from("user_topics").select("*").eq("user_id", user.id),
+      supabase
+        .from("daily_targets")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("target_date", today)
+        .order("created_at"),
+    ]);
 
   const progressMap = new Map(
     (userTopics ?? []).map((ut) => [ut.topic_id, ut])
@@ -41,6 +56,16 @@ export default async function DashboardPage() {
   const topicsWithProgress: TopicWithProgress[] = (topics ?? []).map((t) => ({
     ...t,
     user_topic: progressMap.get(t.id) ?? null,
+  }));
+
+  const topicMap = new Map(topicsWithProgress.map((t) => [t.id, t]));
+
+  // Enrich daily targets with topic data
+  const dailyTargets: (DailyTarget & { topic: TopicWithProgress | null })[] = (
+    dailyTargetRows ?? []
+  ).map((dt) => ({
+    ...dt,
+    topic: topicMap.get(dt.topic_id) ?? null,
   }));
 
   // Due for review today
@@ -53,7 +78,9 @@ export default async function DashboardPage() {
   // Per-pillar stats
   const pillarStats = slugs.map((slug) => {
     const all = topicsWithProgress.filter((t) => t.pillar === slug);
-    const donePillar = all.filter((t) => t.user_topic?.status === "done").length;
+    const donePillar = all.filter(
+      (t) => t.user_topic?.status === "done"
+    ).length;
     return {
       slug,
       total: all.length,
@@ -61,12 +88,20 @@ export default async function DashboardPage() {
     };
   });
 
-  const totalDone = topicsWithProgress.filter((t) => t.user_topic?.status === "done").length;
+  const totalDone = topicsWithProgress.filter(
+    (t) => t.user_topic?.status === "done"
+  ).length;
   const totalTopics = topicsWithProgress.length;
-  const overallPct = totalTopics ? Math.round((totalDone / totalTopics) * 100) : 0;
+  const overallPct = totalTopics
+    ? Math.round((totalDone / totalTopics) * 100)
+    : 0;
 
-  const hasAnyTopics = totalTopics > 0;
-
+  // Pretty date
+  const dateStr = now.toLocaleDateString("en-IN", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <div className="min-h-screen bg-base">
@@ -115,44 +150,25 @@ export default async function DashboardPage() {
 
         {/* ── Main content ── */}
         <main className="flex-1 min-w-0 space-y-8">
+          {/* Date header */}
+          <div>
+            <p className="text-[13px] text-ink-muted">{dateStr}</p>
+          </div>
 
-          {/* Empty state */}
-          {!hasAnyTopics && (
-            <div className="pt-8">
-              <p className="text-[14px] font-medium text-ink mb-2">
-                Start building your curriculum
-              </p>
-              <p className="text-[13px] text-ink-dim mb-6 leading-relaxed">
-                Add topics under each pillar — DSA patterns, system design problems, Java concepts, and more.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {slugs.map((slug) => (
-                  <Link
-                    key={slug}
-                    href={`/curriculum/${slug}`}
-                    className="
-                      flex items-center gap-1.5 px-3 py-1.5 rounded-full
-                      border border-line hover:border-line-subtle
-                      bg-surface hover:bg-hover transition-colors
-                      text-[12px] text-ink-dim hover:text-ink
-                    "
-                  >
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: colors[slug] ?? "#6c5ce7" }}
-                    />
-                    {labels[slug] ?? slug}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
+          {/* Daily targets */}
+          <DailyTargets
+            targets={dailyTargets}
+            allTopics={topicsWithProgress}
+            pillars={pillars}
+            userId={user.id}
+            today={today}
+          />
 
           {/* Due reviews */}
           <section>
             <p className="text-[11px] font-mono text-ink-muted uppercase tracking-widest mb-3">
-              Due for review {dueReviews.length > 0 && `· ${dueReviews.length}`}
+              Due for review{" "}
+              {dueReviews.length > 0 && `· ${dueReviews.length}`}
             </p>
             {dueReviews.length > 0 ? (
               <div className="flex flex-wrap gap-2">
@@ -171,98 +187,11 @@ export default async function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-[12px] text-ink-muted">Nothing due for review today ✓</p>
+              <p className="text-[12px] text-ink-muted">
+                Nothing due for review today ✓
+              </p>
             )}
           </section>
-
-          {/* Pillar sections */}
-          {slugs.map((slug) => {
-            const pillarTopics = topicsWithProgress.filter(
-              (t) => t.pillar === slug
-            );
-            if (pillarTopics.length === 0) return null;
-
-            const inProgress = pillarTopics.filter(
-              (t) => t.user_topic?.status === "in_progress"
-            );
-            const notStarted = pillarTopics.filter(
-              (t) => !t.user_topic || t.user_topic.status === "not_started"
-            );
-            const shown = [...inProgress, ...notStarted].slice(0, 5);
-
-            const allDone = pillarTopics.every(
-              (t) => t.user_topic?.status === "done"
-            );
-            if (allDone) return null;
-
-            return (
-              <section key={slug}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: colors[slug] ?? "#6c5ce7" }}
-                    />
-                    <p className="text-[14px] font-medium text-ink">
-                      {labels[slug] ?? slug}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/curriculum/${slug}`}
-                    className="text-[11px] font-mono text-ink-muted hover:text-ink transition-colors"
-                  >
-                    View all →
-                  </Link>
-                </div>
-                <div className="bg-surface rounded-lg border border-line overflow-hidden">
-                  {shown.map((t, i) => {
-                    const status = t.user_topic?.status ?? "not_started";
-                    const isDone = status === "done";
-                    return (
-                      <Link
-                        key={t.id}
-                        href={`/topic/${t.id}`}
-                        className={`
-                          flex items-center gap-3 px-4 py-3
-                          ${i < shown.length - 1 ? "border-b border-line" : ""}
-                          hover:bg-hover transition-colors group
-                        `}
-                      >
-                        <span
-                          className={`
-                            w-4 h-4 rounded-[4px] border shrink-0 flex items-center justify-center
-                            ${isDone ? "bg-purple border-purple" : "border-line-subtle"}
-                          `}
-                        >
-                          {isDone && (
-                            <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                              <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </span>
-                        <span
-                          className={`
-                            flex-1 text-[13px]
-                            ${isDone
-                              ? "line-through text-ink-faint"
-                              : "text-ink-dim group-hover:text-ink transition-colors"
-                            }
-                          `}
-                        >
-                          {t.title}
-                        </span>
-                        {status === "in_progress" && (
-                          <span className="font-mono text-[10px] px-2 py-0.5 rounded-full text-status-green border border-status-green-border bg-status-green-bg">
-                            In progress
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })}
         </main>
       </div>
     </div>

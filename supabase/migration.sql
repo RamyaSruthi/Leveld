@@ -216,6 +216,25 @@ ALTER TABLE public.resources ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own resources" ON public.resources
   FOR ALL USING (auth.uid() = user_id);
 
+-- ── daily_targets ───────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.daily_targets (
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  topic_id    UUID NOT NULL REFERENCES public.topics(id) ON DELETE CASCADE,
+  target_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  completed   BOOLEAN NOT NULL DEFAULT false,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, topic_id, target_date)
+);
+
+ALTER TABLE public.daily_targets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own daily targets" ON public.daily_targets
+  FOR ALL USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS daily_targets_user_date
+  ON public.daily_targets (user_id, target_date);
+
 -- ── mindset_entries ──────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.mindset_entries (

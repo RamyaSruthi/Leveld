@@ -184,6 +184,17 @@ export interface MindsetEntry {
   created_at: string;
 }
 
+// ── Daily targets ────────────────────────────────────────────────────────────
+
+export interface DailyTarget {
+  id: string;
+  user_id: string;
+  topic_id: string;
+  target_date: string;
+  completed: boolean;
+  created_at: string;
+}
+
 export type ResourceCategory = "book" | "article" | "repo" | "course";
 
 export const RESOURCE_CATEGORIES: { value: ResourceCategory; label: string; icon: string }[] = [
