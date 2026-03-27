@@ -81,36 +81,53 @@ export function DailyTargets({
     });
   }
 
+  const [error, setError] = useState<string | null>(null);
+
   function handleAddTargets() {
     if (selected.size === 0) return;
+    setError(null);
     startTransition(async () => {
-      await addMultipleDailyTargets({
-        userId,
-        topicIds: Array.from(selected),
-        targetDate: today,
-      });
-      setShowPicker(false);
-      setSearch("");
-      setSelected(new Set());
-      router.refresh();
+      try {
+        await addMultipleDailyTargets({
+          userId,
+          topicIds: Array.from(selected),
+          targetDate: today,
+        });
+        setShowPicker(false);
+        setSearch("");
+        setSelected(new Set());
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to add targets");
+      }
     });
   }
 
   function handleToggleDone(target: DailyTarget) {
+    setError(null);
     startTransition(async () => {
-      await toggleDailyTargetDone({
-        id: target.id,
-        userId,
-        completed: !target.completed,
-      });
-      router.refresh();
+      try {
+        await toggleDailyTargetDone({
+          id: target.id,
+          userId,
+          completed: !target.completed,
+        });
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to update target");
+      }
     });
   }
 
   function handleRemove(target: DailyTarget) {
+    setError(null);
     startTransition(async () => {
-      await removeDailyTarget({ id: target.id, userId });
-      router.refresh();
+      try {
+        await removeDailyTarget({ id: target.id, userId });
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to remove target");
+      }
     });
   }
 
@@ -144,6 +161,13 @@ export function DailyTargets({
           Add topics
         </button>
       </div>
+
+      {/* Error */}
+      {error && (
+        <p className="mb-3 text-[12px] text-red-600 font-mono bg-red-50 border border-red-200 rounded-md px-3 py-2">
+          {error}
+        </p>
+      )}
 
       {/* Progress bar */}
       {totalCount > 0 && (
