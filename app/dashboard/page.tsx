@@ -126,11 +126,8 @@ export default async function DashboardPage() {
                 className="group flex items-center gap-2.5 rounded-lg px-3 py-2 hover:bg-hover transition-all duration-200"
               >
                 <span
-                  className="w-2 h-2 rounded-full shrink-0 ring-2 ring-offset-1 ring-offset-white"
-                  style={{
-                    backgroundColor: colors[slug] ?? "#6c5ce7",
-                    ringColor: `${colors[slug] ?? "#6c5ce7"}40`,
-                  }}
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: colors[slug] ?? "#6c5ce7" }}
                 />
                 <span className="flex-1 text-[12px] text-ink-dim group-hover:text-ink transition-colors truncate">
                   {labels[slug] ?? slug}
