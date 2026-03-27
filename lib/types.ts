@@ -1,49 +1,45 @@
-export type Pillar =
-  | "dsa"
-  | "hld"
-  | "lld"
-  | "tech_stack"
-  | "theory"
-  | "behavioral"
-  | "projects";
+// Legacy Pillar type kept for compatibility; prefer PillarConfig from DB
+export type Pillar = string;
 
 export type TopicStatus = "not_started" | "in_progress" | "done";
 export type MockScore = "weak" | "acceptable" | "strong";
 
-export const PILLAR_LABELS: Record<Pillar, string> = {
-  dsa: "DSA",
-  hld: "HLD",
-  lld: "LLD",
-  tech_stack: "Tech Stack / Java",
-  theory: "Theory",
-  behavioral: "Behavioral",
-  projects: "Projects",
-};
+// ── Dynamic pillar configuration (stored per-user in DB) ────────────────────
 
-export const PILLAR_ORDER: Pillar[] = [
-  "dsa",
-  "hld",
-  "lld",
-  "tech_stack",
-  "theory",
-  "behavioral",
-  "projects",
+export interface PillarConfig {
+  id: string;
+  user_id: string;
+  slug: string;
+  label: string;
+  color: string;
+  order_index: number;
+}
+
+// Default pillars — used to seed new users
+export const DEFAULT_PILLARS: Omit<PillarConfig, "id" | "user_id">[] = [
+  { slug: "dsa", label: "DSA", color: "#6c5ce7", order_index: 0 },
+  { slug: "hld", label: "HLD", color: "#0984e3", order_index: 1 },
+  { slug: "lld", label: "LLD", color: "#00b894", order_index: 2 },
+  { slug: "tech_stack", label: "Tech Stack / Java", color: "#e17055", order_index: 3 },
+  { slug: "theory", label: "Theory", color: "#fdcb6e", order_index: 4 },
+  { slug: "behavioral", label: "Behavioral", color: "#a29bfe", order_index: 5 },
+  { slug: "projects", label: "Projects", color: "#fd79a8", order_index: 6 },
 ];
 
-// Dot color per pillar (used in sidebar)
-export const PILLAR_COLORS: Record<Pillar, string> = {
-  dsa: "#6c5ce7",
-  hld: "#0984e3",
-  lld: "#00b894",
-  tech_stack: "#e17055",
-  theory: "#fdcb6e",
-  behavioral: "#a29bfe",
-  projects: "#fd79a8",
-};
+// Helpers to build lookup maps from a PillarConfig array
+export function pillarLabels(pillars: PillarConfig[]): Record<string, string> {
+  return Object.fromEntries(pillars.map((p) => [p.slug, p.label]));
+}
+export function pillarColors(pillars: PillarConfig[]): Record<string, string> {
+  return Object.fromEntries(pillars.map((p) => [p.slug, p.color]));
+}
+export function pillarSlugs(pillars: PillarConfig[]): string[] {
+  return pillars.map((p) => p.slug);
+}
 
 export interface Topic {
   id: string;
-  pillar: Pillar;
+  pillar: string;
   title: string;
   description: string | null;
   order_index: number;
@@ -83,6 +79,7 @@ export const DSA_ROADMAPS = [
   "Striver's A2Z",
   "Love Babbar 450",
   "GFG Top 100",
+  "Leetcode Top Interview 150",
   "Custom",
 ] as const;
 

@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { Pillar } from "@/lib/types";
 
 export async function toggleTopicDone({
   topicId,
@@ -51,7 +50,7 @@ export async function createTopic({
   company,
   source_url,
 }: {
-  pillar: Pillar;
+  pillar: string;
   userId: string;
   title: string;
   description?: string;
@@ -100,4 +99,37 @@ export async function deleteTopic({ topicId, userId }: { topicId: string; userId
     .delete()
     .eq("id", topicId)
     .eq("user_id", userId);
+}
+
+export async function moveTopicToPillar({
+  topicId,
+  userId,
+  newPillar,
+}: {
+  topicId: string;
+  userId: string;
+  newPillar: string;
+}) {
+  const supabase = await createClient();
+
+  // Get next order_index in the target pillar
+  const { data: existing } = await supabase
+    .from("topics")
+    .select("order_index")
+    .eq("user_id", userId)
+    .eq("pillar", newPillar)
+    .order("order_index", { ascending: false })
+    .limit(1)
+    .single();
+
+  const nextIndex = (existing?.order_index ?? 0) + 1;
+
+  const { error } = await supabase
+    .from("topics")
+    .update({ pillar: newPillar, order_index: nextIndex })
+    .eq("id", topicId)
+    .eq("user_id", userId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
 }

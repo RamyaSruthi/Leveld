@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/nav";
-import { PILLAR_LABELS, PILLAR_ORDER, PILLAR_COLORS } from "@/lib/types";
-import type { Pillar } from "@/lib/types";
+import { getUserPillars } from "@/lib/pillars";
+import { PillarManager } from "./pillar-manager";
 
 export default async function CurriculumPage() {
   const supabase = await createClient();
@@ -12,6 +12,8 @@ export default async function CurriculumPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/auth");
+
+  const pillars = await getUserPillars(user.id);
 
   const { data: topics } = await supabase
     .from("topics")
@@ -37,17 +39,20 @@ export default async function CurriculumPage() {
     <div className="min-h-screen bg-base">
       <Nav userEmail={user?.email} />
       <div className="max-w-3xl mx-auto px-6 py-8">
-        <h1 className="text-[20px] font-semibold text-ink mb-1 tracking-tight">
-          Curriculum
-        </h1>
+        <div className="flex items-end justify-between mb-1">
+          <h1 className="text-[20px] font-semibold text-ink tracking-tight">
+            Curriculum
+          </h1>
+          <PillarManager pillars={pillars} userId={user.id} />
+        </div>
         <p className="text-[13px] text-ink-dim mb-8">
           {totalDone} of {totalTopics} topics complete
         </p>
 
         <div className="space-y-6">
-          {PILLAR_ORDER.map((pillar) => {
+          {pillars.map((pillar) => {
             const pillarTopics = (topics ?? []).filter(
-              (t) => t.pillar === pillar
+              (t) => t.pillar === pillar.slug
             );
             const done = pillarTopics.filter(
               (t) => progressMap.get(t.id)?.status === "done"
@@ -58,17 +63,17 @@ export default async function CurriculumPage() {
 
             return (
               <Link
-                key={pillar}
-                href={`/curriculum/${pillar}`}
+                key={pillar.slug}
+                href={`/curriculum/${pillar.slug}`}
                 className="block bg-surface rounded-lg border border-line hover:border-line-subtle transition-colors overflow-hidden"
               >
                 <div className="px-4 py-3.5 flex items-center gap-3">
                   <span
                     className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: PILLAR_COLORS[pillar as Pillar] }}
+                    style={{ backgroundColor: pillar.color }}
                   />
                   <span className="flex-1 text-[14px] font-medium text-ink">
-                    {PILLAR_LABELS[pillar as Pillar]}
+                    {pillar.label}
                   </span>
                   <span className="font-mono text-[11px] text-ink-muted">
                     {pillarTopics.length === 0

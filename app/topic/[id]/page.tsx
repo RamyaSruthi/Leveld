@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/nav";
+import { getUserPillars } from "@/lib/pillars";
 import { TopicEditor } from "./topic-editor";
 
 interface Props {
@@ -54,6 +55,9 @@ export default async function TopicPage({ params }: Props) {
     aiReview = data;
   }
 
+  const pillars = await getUserPillars(user.id);
+  const pillarConfig = pillars.find((p) => p.slug === topic.pillar) ?? null;
+
   return (
     <div className="h-screen flex flex-col bg-white overflow-hidden">
       <Nav userEmail={user?.email} />
@@ -63,6 +67,7 @@ export default async function TopicPage({ params }: Props) {
         latestNote={latestNote ?? null}
         aiReview={aiReview}
         userId={user.id}
+        pillarConfig={pillarConfig}
       />
     </div>
   );

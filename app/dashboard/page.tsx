@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/nav";
-import { PILLAR_LABELS, PILLAR_ORDER, PILLAR_COLORS } from "@/lib/types";
-import type { Pillar, TopicWithProgress } from "@/lib/types";
+import { getUserPillars } from "@/lib/pillars";
+import { pillarLabels, pillarColors } from "@/lib/types";
+import type { TopicWithProgress } from "@/lib/types";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -21,6 +22,11 @@ export default async function DashboardPage() {
     .single();
 
   if (!profile?.start_date) redirect("/onboarding");
+
+  const pillars = await getUserPillars(user.id);
+  const labels = pillarLabels(pillars);
+  const colors = pillarColors(pillars);
+  const slugs = pillars.map((p) => p.slug);
 
   // Fetch topics + progress in parallel
   const [{ data: topics }, { data: userTopics }] = await Promise.all([
@@ -45,11 +51,11 @@ export default async function DashboardPage() {
   });
 
   // Per-pillar stats
-  const pillarStats = PILLAR_ORDER.map((pillar) => {
-    const all = topicsWithProgress.filter((t) => t.pillar === pillar);
+  const pillarStats = slugs.map((slug) => {
+    const all = topicsWithProgress.filter((t) => t.pillar === slug);
     const donePillar = all.filter((t) => t.user_topic?.status === "done").length;
     return {
-      pillar,
+      slug,
       total: all.length,
       pct: all.length ? Math.round((donePillar / all.length) * 100) : 0,
     };
@@ -73,18 +79,18 @@ export default async function DashboardPage() {
             Pillars
           </p>
           <div className="space-y-1">
-            {pillarStats.map(({ pillar, total, pct }) => (
+            {pillarStats.map(({ slug, total, pct }) => (
               <Link
-                key={pillar}
-                href={`/curriculum/${pillar}`}
+                key={slug}
+                href={`/curriculum/${slug}`}
                 className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-hover transition-colors"
               >
                 <span
                   className="w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ backgroundColor: PILLAR_COLORS[pillar as Pillar] }}
+                  style={{ backgroundColor: colors[slug] ?? "#6c5ce7" }}
                 />
                 <span className="flex-1 text-[12px] text-ink-dim group-hover:text-ink transition-colors truncate">
-                  {PILLAR_LABELS[pillar as Pillar]}
+                  {labels[slug] ?? slug}
                 </span>
                 <span className="font-mono text-[10px] text-ink-muted">
                   {total === 0 ? "—" : `${pct}%`}
@@ -120,10 +126,10 @@ export default async function DashboardPage() {
                 Add topics under each pillar — DSA patterns, system design problems, Java concepts, and more.
               </p>
               <div className="flex flex-wrap gap-2">
-                {PILLAR_ORDER.map((pillar) => (
+                {slugs.map((slug) => (
                   <Link
-                    key={pillar}
-                    href={`/curriculum/${pillar}`}
+                    key={slug}
+                    href={`/curriculum/${slug}`}
                     className="
                       flex items-center gap-1.5 px-3 py-1.5 rounded-full
                       border border-line hover:border-line-subtle
@@ -133,9 +139,9 @@ export default async function DashboardPage() {
                   >
                     <span
                       className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: PILLAR_COLORS[pillar as Pillar] }}
+                      style={{ backgroundColor: colors[slug] ?? "#6c5ce7" }}
                     />
-                    {PILLAR_LABELS[pillar as Pillar]}
+                    {labels[slug] ?? slug}
                   </Link>
                 ))}
               </div>
@@ -170,9 +176,9 @@ export default async function DashboardPage() {
           </section>
 
           {/* Pillar sections */}
-          {PILLAR_ORDER.map((pillar) => {
+          {slugs.map((slug) => {
             const pillarTopics = topicsWithProgress.filter(
-              (t) => t.pillar === pillar
+              (t) => t.pillar === slug
             );
             if (pillarTopics.length === 0) return null;
 
@@ -190,19 +196,19 @@ export default async function DashboardPage() {
             if (allDone) return null;
 
             return (
-              <section key={pillar}>
+              <section key={slug}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span
                       className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: PILLAR_COLORS[pillar as Pillar] }}
+                      style={{ backgroundColor: colors[slug] ?? "#6c5ce7" }}
                     />
                     <p className="text-[14px] font-medium text-ink">
-                      {PILLAR_LABELS[pillar as Pillar]}
+                      {labels[slug] ?? slug}
                     </p>
                   </div>
                   <Link
-                    href={`/curriculum/${pillar}`}
+                    href={`/curriculum/${slug}`}
                     className="text-[11px] font-mono text-ink-muted hover:text-ink transition-colors"
                   >
                     View all →

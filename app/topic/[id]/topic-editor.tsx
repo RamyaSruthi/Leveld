@@ -3,8 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { PILLAR_LABELS } from "@/lib/types";
-import type { Topic, UserTopic, Note, AiReview } from "@/lib/types";
+import type { Topic, UserTopic, Note, AiReview, PillarConfig } from "@/lib/types";
 import { saveNote, markTopicDone, markTopicInProgress, runGapAnalysis, reviewTopic } from "./actions";
 import dynamic from "next/dynamic";
 
@@ -19,6 +18,7 @@ interface Props {
   latestNote: Note | null;
   aiReview: AiReview | null;
   userId: string;
+  pillarConfig?: PillarConfig | null;
 }
 
 export function TopicEditor({
@@ -27,6 +27,7 @@ export function TopicEditor({
   latestNote,
   aiReview: initialAiReview,
   userId,
+  pillarConfig,
 }: Props) {
   const [content, setContent] = useState(latestNote?.content ?? "");
   const [isDirty, setIsDirty] = useState(false);
@@ -139,7 +140,7 @@ export function TopicEditor({
               href={`/curriculum/${topic.pillar}`}
               className="font-mono text-[10px] text-ink-muted hover:text-ink transition-colors"
             >
-              {PILLAR_LABELS[topic.pillar]}
+              {pillarConfig?.label ?? topic.pillar}
             </Link>
           </div>
 

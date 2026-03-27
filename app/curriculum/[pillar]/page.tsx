@@ -2,18 +2,17 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/nav";
-import { PILLAR_LABELS, PILLAR_ORDER, PILLAR_COLORS } from "@/lib/types";
+import { getUserPillars } from "@/lib/pillars";
 import { AddTopicForm } from "./add-topic-form";
 import { TopicRow } from "./topic-row";
-import type { Pillar, TopicWithProgress } from "@/lib/types";
+import type { TopicWithProgress } from "@/lib/types";
 
 interface Props {
   params: { pillar: string };
 }
 
 export default async function PillarPage({ params }: Props) {
-  const pillar = params.pillar as Pillar;
-  if (!PILLAR_ORDER.includes(pillar)) notFound();
+  const slug = params.pillar;
 
   const supabase = await createClient();
   const {
@@ -22,10 +21,14 @@ export default async function PillarPage({ params }: Props) {
 
   if (!user) redirect("/auth");
 
+  const pillars = await getUserPillars(user.id);
+  const pillar = pillars.find((p) => p.slug === slug);
+  if (!pillar) notFound();
+
   const { data: topics } = await supabase
     .from("topics")
     .select("*")
-    .eq("pillar", pillar)
+    .eq("pillar", slug)
     .eq("user_id", user.id)
     .order("order_index");
 
@@ -64,7 +67,7 @@ export default async function PillarPage({ params }: Props) {
           </Link>
           <span className="text-ink-faint text-[11px]">/</span>
           <span className="font-mono text-[11px] text-ink-dim">
-            {PILLAR_LABELS[pillar]}
+            {pillar.label}
           </span>
         </div>
 
@@ -72,10 +75,10 @@ export default async function PillarPage({ params }: Props) {
         <div className="flex items-center gap-2 mb-2">
           <span
             className="w-2.5 h-2.5 rounded-full"
-            style={{ backgroundColor: PILLAR_COLORS[pillar] }}
+            style={{ backgroundColor: pillar.color }}
           />
           <h1 className="text-[20px] font-semibold text-ink tracking-tight">
-            {PILLAR_LABELS[pillar]}
+            {pillar.label}
           </h1>
           {topicsWithProgress.length > 0 && (
             <span className="font-mono text-[12px] text-ink-muted ml-auto">
@@ -105,11 +108,11 @@ export default async function PillarPage({ params }: Props) {
             </div>
           ) : (
             topicsWithProgress.map((t) => (
-              <TopicRow key={t.id} topic={t} userId={user.id} />
+              <TopicRow key={t.id} topic={t} userId={user.id} pillars={pillars} />
             ))
           )}
 
-          <AddTopicForm pillar={pillar} userId={user.id} />
+          <AddTopicForm pillar={slug} userId={user.id} />
         </div>
       </div>
     </div>

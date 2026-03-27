@@ -1,19 +1,22 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { toggleTopicDone } from "./actions";
-import type { TopicWithProgress } from "@/lib/types";
+import { toggleTopicDone, moveTopicToPillar } from "./actions";
+import type { PillarConfig, TopicWithProgress } from "@/lib/types";
 
 interface Props {
   topic: TopicWithProgress;
   userId: string;
+  pillars: PillarConfig[];
 }
 
-export function TopicRow({ topic, userId }: Props) {
+export function TopicRow({ topic, userId, pillars }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isDone, setIsDone] = useState(topic.user_topic?.status === "done");
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const moveRef = useRef<HTMLDivElement>(null);
   const status = topic.user_topic?.status ?? "not_started";
   const lastStudied = topic.user_topic?.last_studied_at;
 
@@ -21,6 +24,17 @@ export function TopicRow({ topic, userId }: Props) {
   useEffect(() => {
     setIsDone(topic.user_topic?.status === "done");
   }, [topic.user_topic?.status]);
+
+  // Close menu on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (moveRef.current && !moveRef.current.contains(e.target as Node)) {
+        setShowMoveMenu(false);
+      }
+    }
+    if (showMoveMenu) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMoveMenu]);
 
   function handleRowClick() {
     // Block navigation while toggle is in flight to avoid race condition
@@ -122,6 +136,51 @@ export function TopicRow({ topic, userId }: Props) {
             In progress
           </span>
         )}
+
+        {/* Move to pillar */}
+        <div ref={moveRef} className="relative">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMoveMenu((v) => !v);
+            }}
+            title="Move to another pillar"
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-base"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-ink-muted">
+              <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          {showMoveMenu && (
+            <div className="absolute right-0 top-full mt-1 z-50 bg-surface border border-line rounded-lg shadow-lg py-1 min-w-[160px]">
+              <p className="px-3 py-1.5 text-[10px] font-mono text-ink-faint uppercase tracking-wider">
+                Move to
+              </p>
+              {pillars.filter((p) => p.slug !== topic.pillar).map((p) => (
+                <button
+                  key={p.slug}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMoveMenu(false);
+                    startTransition(async () => {
+                      await moveTopicToPillar({ topicId: topic.id, userId, newPillar: p.slug });
+                      router.refresh();
+                    });
+                  }}
+                  disabled={isPending}
+                  className="w-full text-left px-3 py-1.5 text-[12px] text-ink-dim hover:bg-hover hover:text-ink transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: p.color }}
+                  />
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

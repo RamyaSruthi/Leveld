@@ -4,9 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTopic } from "./actions";
 import { DSA_TAGS, DSA_ROADMAPS } from "@/lib/types";
-import type { Pillar } from "@/lib/types";
 
-export function AddTopicForm({ pillar, userId }: { pillar: Pillar; userId: string }) {
+export function AddTopicForm({ pillar, userId }: { pillar: string; userId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");

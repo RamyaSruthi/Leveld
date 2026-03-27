@@ -180,6 +180,25 @@ ALTER TABLE public.interview_rounds ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own rounds" ON public.interview_rounds
   FOR ALL USING (auth.uid() = user_id);
 
+-- ── pillars (user-customisable pillar definitions) ──────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.pillars (
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  slug        TEXT NOT NULL,
+  label       TEXT NOT NULL,
+  color       TEXT NOT NULL DEFAULT '#6c5ce7',
+  order_index INT NOT NULL DEFAULT 0,
+  UNIQUE(user_id, slug)
+);
+
+ALTER TABLE public.pillars ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own pillars" ON public.pillars
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Migrate topics.pillar from enum to text so custom pillar slugs work
+ALTER TABLE public.topics ALTER COLUMN pillar TYPE TEXT USING pillar::TEXT;
+
 -- ── mindset_entries ──────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.mindset_entries (
