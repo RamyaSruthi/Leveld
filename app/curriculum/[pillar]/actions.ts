@@ -46,6 +46,7 @@ export async function createTopic({
   description,
   tag,
   roadmap,
+  topic_type,
   is_company_specific,
   company,
   source_url,
@@ -56,6 +57,7 @@ export async function createTopic({
   description?: string;
   tag?: string;
   roadmap?: string;
+  topic_type?: string;
   is_company_specific?: boolean;
   company?: string;
   source_url?: string;
@@ -82,6 +84,7 @@ export async function createTopic({
     is_custom: true,
     tag: tag || null,
     roadmap: roadmap || null,
+    topic_type: topic_type || null,
     is_company_specific: is_company_specific ?? false,
     company: company || null,
     source_url: source_url || null,
@@ -119,6 +122,32 @@ export async function updateTopicTag({
     .eq("user_id", userId);
 
   if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}
+
+export async function recordSolveAttemptFromList({
+  userId,
+  topicId,
+  attemptType,
+  timeTakenMins,
+}: {
+  userId: string;
+  topicId: string;
+  attemptType: "first_solve" | "revision_solve" | "skimmed";
+  timeTakenMins?: number | null;
+}) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("solve_attempts").insert({
+    user_id: userId,
+    topic_id: topicId,
+    attempt_type: attemptType,
+    time_taken_mins: timeTakenMins ?? null,
+  });
+
+  if (error) {
+    console.error("Error recording solve attempt:", error.message);
+  }
   revalidatePath("/", "layout");
 }
 

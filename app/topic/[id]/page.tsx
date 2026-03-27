@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/nav";
 import { getUserPillars } from "@/lib/pillars";
 import { TopicEditor } from "./topic-editor";
+import type { SolveAttempt } from "@/lib/types";
 
 interface Props {
   params: { id: string };
@@ -24,23 +25,30 @@ export default async function TopicPage({ params }: Props) {
 
   if (!topic) notFound();
 
-  // Get or create user_topic row
-  const { data: userTopic } = await supabase
-    .from("user_topics")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("topic_id", topic.id)
-    .single();
-
-  // Get latest note version
-  const { data: latestNote } = await supabase
-    .from("notes")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("topic_id", topic.id)
-    .order("version", { ascending: false })
-    .limit(1)
-    .single();
+  // Get user_topic, latest note, and solve attempts in parallel
+  const [{ data: userTopic }, { data: latestNote }, { data: solveAttempts }] =
+    await Promise.all([
+      supabase
+        .from("user_topics")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("topic_id", topic.id)
+        .single(),
+      supabase
+        .from("notes")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("topic_id", topic.id)
+        .order("version", { ascending: false })
+        .limit(1)
+        .single(),
+      supabase
+        .from("solve_attempts")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("topic_id", topic.id)
+        .order("attempted_at", { ascending: false }),
+    ]);
 
   // Get latest AI review for this note
   let aiReview = null;
@@ -68,6 +76,7 @@ export default async function TopicPage({ params }: Props) {
         aiReview={aiReview}
         userId={user.id}
         pillarConfig={pillarConfig}
+        solveAttempts={(solveAttempts ?? []) as SolveAttempt[]}
       />
     </div>
   );

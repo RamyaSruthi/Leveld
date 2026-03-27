@@ -295,3 +295,21 @@ export async function deleteRound({
   revalidatePath("/jobs");
   revalidatePath(`/jobs/${applicationId}`);
 }
+
+// ── Target companies ──────────────────────────────────────────────────────────
+
+export async function updateTargetCompanies({
+  userId,
+  companies,
+}: {
+  userId: string;
+  companies: string[];
+}) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("users")
+    .update({ target_companies: companies })
+    .eq("id", userId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/jobs");
+}

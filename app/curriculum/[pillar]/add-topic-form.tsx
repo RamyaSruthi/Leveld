@@ -20,6 +20,7 @@ export function AddTopicForm({
   const [description, setDescription] = useState("");
   const [tag, setTag] = useState("");
   const [roadmap, setRoadmap] = useState("");
+  const [topicType, setTopicType] = useState<string>("coding_problem");
   const [isCompanySpecific, setIsCompanySpecific] = useState(false);
   const [company, setCompany] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -32,6 +33,7 @@ export function AddTopicForm({
     setDescription("");
     setTag("");
     setRoadmap("");
+    setTopicType("coding_problem");
     setIsCompanySpecific(false);
     setCompany("");
     setSourceUrl("");
@@ -49,6 +51,7 @@ export function AddTopicForm({
         tag: tag.trim() || undefined,
         ...(isDsa && {
           roadmap: roadmap || undefined,
+          topic_type: topicType || undefined,
           is_company_specific: isCompanySpecific,
           company: isCompanySpecific ? company.trim() : undefined,
           source_url: sourceUrl.trim() || undefined,
@@ -97,6 +100,43 @@ export function AddTopicForm({
           "
         />
       </div>
+
+      {/* Topic type — DSA only */}
+      {isDsa && (
+        <div>
+          <label className="block text-[11px] font-mono text-ink-muted mb-1">
+            Type
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setTopicType("coding_problem")}
+              className={`
+                flex-1 h-9 rounded-md text-[12px] font-mono border transition-colors
+                ${topicType === "coding_problem"
+                  ? "bg-purple text-white border-purple"
+                  : "bg-surface border-line text-ink-muted hover:border-line-subtle"
+                }
+              `}
+            >
+              💻 Coding Problem
+            </button>
+            <button
+              type="button"
+              onClick={() => setTopicType("concept")}
+              className={`
+                flex-1 h-9 rounded-md text-[12px] font-mono border transition-colors
+                ${topicType === "concept"
+                  ? "bg-purple text-white border-purple"
+                  : "bg-surface border-line text-ink-muted hover:border-line-subtle"
+                }
+              `}
+            >
+              📖 Concept
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tag — available for ALL pillars */}
       <div>

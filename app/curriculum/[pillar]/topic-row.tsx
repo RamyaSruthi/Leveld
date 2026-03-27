@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { toggleTopicDone, moveTopicToPillar, updateTopicTag } from "./actions";
+import { toggleTopicDone, moveTopicToPillar, updateTopicTag, recordSolveAttemptFromList } from "./actions";
 import type { PillarConfig, TopicWithProgress } from "@/lib/types";
 
 interface Props {
@@ -18,12 +18,16 @@ export function TopicRow({ topic, userId, pillars, existingTags }: Props) {
   const [isDone, setIsDone] = useState(topic.user_topic?.status === "done");
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [showTagInput, setShowTagInput] = useState(false);
+  const [showTimePrompt, setShowTimePrompt] = useState(false);
+  const [timeTaken, setTimeTaken] = useState("");
   const [tagValue, setTagValue] = useState(topic.tag || "");
   const moveRef = useRef<HTMLDivElement>(null);
   const tagRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
+  const timeInputRef = useRef<HTMLInputElement>(null);
   const status = topic.user_topic?.status ?? "not_started";
   const lastStudied = topic.user_topic?.last_studied_at;
+  const isCodingProblem = topic.pillar === "dsa" && topic.topic_type !== "concept";
 
   // Re-sync when server re-renders with fresh data (after router.refresh())
   useEffect(() => {
@@ -65,12 +69,42 @@ export function TopicRow({ topic, userId, pillars, existingTags }: Props) {
     router.push(`/topic/${topic.id}`);
   }
 
+  // Focus time input when prompt shows
+  useEffect(() => {
+    if (showTimePrompt) timeInputRef.current?.focus();
+  }, [showTimePrompt]);
+
   function handleCheckbox(e: React.MouseEvent) {
     e.stopPropagation();
     const next = !isDone;
+
+    if (next && isCodingProblem) {
+      // About to mark done a coding problem — ask for time
+      setShowTimePrompt(true);
+      return;
+    }
+
     setIsDone(next);
     startTransition(async () => {
       await toggleTopicDone({ topicId: topic.id, userId, currentlyDone: !next });
+      router.refresh();
+    });
+  }
+
+  function handleTimeSubmit() {
+    const mins = timeTaken.trim() ? parseInt(timeTaken.trim(), 10) : null;
+    const validMins = mins && !isNaN(mins) && mins > 0 ? mins : null;
+    setIsDone(true);
+    setShowTimePrompt(false);
+    setTimeTaken("");
+    startTransition(async () => {
+      await toggleTopicDone({ topicId: topic.id, userId, currentlyDone: false });
+      await recordSolveAttemptFromList({
+        userId,
+        topicId: topic.id,
+        attemptType: "first_solve",
+        timeTakenMins: validMins,
+      });
       router.refresh();
     });
   }
@@ -111,6 +145,56 @@ export function TopicRow({ topic, userId, pillars, existingTags }: Props) {
       onClick={handleRowClick}
       className="relative flex items-start gap-3 px-4 py-3.5 group border-b border-line hover:bg-hover transition-colors cursor-pointer"
     >
+      {/* Time prompt overlay */}
+      {showTimePrompt && (
+        <div
+          className="absolute left-0 top-0 right-0 bottom-0 z-40 bg-surface/95 backdrop-blur-sm flex items-center justify-center px-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-2 w-full max-w-xs">
+            <span className="text-[11px] text-ink-dim whitespace-nowrap">Time (min):</span>
+            <input
+              ref={timeInputRef}
+              type="number"
+              min="1"
+              value={timeTaken}
+              onChange={(e) => setTimeTaken(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleTimeSubmit();
+                if (e.key === "Escape") {
+                  setShowTimePrompt(false);
+                  setTimeTaken("");
+                }
+              }}
+              placeholder="25"
+              className="w-16 h-7 px-2 rounded text-[12px] font-mono bg-base border border-line text-ink focus:outline-none focus:border-purple"
+            />
+            <button
+              onClick={handleTimeSubmit}
+              disabled={isPending}
+              className="font-mono text-[10px] px-2 py-1 rounded bg-purple text-white hover:opacity-90 disabled:opacity-50"
+            >
+              Done
+            </button>
+            <button
+              onClick={() => {
+                setShowTimePrompt(false);
+                setTimeTaken("");
+                // Mark done without time
+                setIsDone(true);
+                startTransition(async () => {
+                  await toggleTopicDone({ topicId: topic.id, userId, currentlyDone: false });
+                  router.refresh();
+                });
+              }}
+              className="font-mono text-[10px] text-ink-muted hover:text-ink"
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Checkbox */}
       <button
         onClick={handleCheckbox}
@@ -188,6 +272,15 @@ export function TopicRow({ topic, userId, pillars, existingTags }: Props) {
             </button>
           )}
 
+          {topic.topic_type && (
+            <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
+              topic.topic_type === "concept"
+                ? "bg-blue-50 border-blue-200 text-blue-600"
+                : "bg-green-50 border-green-200 text-green-600"
+            }`}>
+              {topic.topic_type === "concept" ? "📖 Concept" : "💻 Code"}
+            </span>
+          )}
           {topic.roadmap && (
             <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-base border border-line text-ink-muted">
               {topic.roadmap}

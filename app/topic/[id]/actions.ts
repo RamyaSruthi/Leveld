@@ -190,6 +190,32 @@ export async function revisitTopic({
   revalidatePath("/", "layout");
 }
 
+// ── Record a solve attempt (first solve or revision) ──────────────────────────
+
+export async function recordSolveAttempt({
+  userId,
+  topicId,
+  attemptType,
+  timeTakenMins,
+}: {
+  userId: string;
+  topicId: string;
+  attemptType: "first_solve" | "revision_solve" | "skimmed";
+  timeTakenMins?: number | null;
+}) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("solve_attempts").insert({
+    user_id: userId,
+    topic_id: topicId,
+    attempt_type: attemptType,
+    time_taken_mins: timeTakenMins ?? null,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}
+
 // ── Run AI gap analysis ───────────────────────────────────────────────────────
 
 export async function runGapAnalysis({

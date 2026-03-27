@@ -5,6 +5,7 @@ import { Nav } from "@/components/nav";
 import { AddApplicationForm } from "./add-application-form";
 import { ConversionFunnel, PipelineDashboard } from "./charts";
 import { ApplicationsList } from "./applications-list";
+import { TargetCompanies } from "./target-companies";
 import type { JobApplication, RoundOutcome } from "@/lib/types";
 
 export default async function JobsPage() {
@@ -12,10 +13,13 @@ export default async function JobsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  const [{ data: applications }, { data: rounds }] = await Promise.all([
+  const [{ data: applications }, { data: rounds }, { data: profile }] = await Promise.all([
     supabase.from("job_applications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
     supabase.from("interview_rounds").select("application_id, outcome, scheduled_at, name").eq("user_id", user.id).order("created_at", { ascending: true }),
+    supabase.from("users").select("target_companies").eq("id", user.id).single(),
   ]);
+
+  const targetCompanies: string[] = profile?.target_companies ?? [];
 
   // Rounds per app (ordered) for dots + funnel
   const roundsByApp: Record<string, { outcome: RoundOutcome }[]> = {};
@@ -104,6 +108,11 @@ export default async function JobsPage() {
             <ConversionFunnel applications={apps} passedCounts={passedCountsObj} />
           </div>
         )}
+
+        {/* Target Companies */}
+        <div className="mb-6">
+          <TargetCompanies userId={user.id} companies={targetCompanies} />
+        </div>
 
         {/* List */}
         {apps.length === 0 ? (

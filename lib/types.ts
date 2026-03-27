@@ -37,6 +37,8 @@ export function pillarSlugs(pillars: PillarConfig[]): string[] {
   return pillars.map((p) => p.slug);
 }
 
+export type TopicType = "coding_problem" | "concept";
+
 export interface Topic {
   id: string;
   pillar: string;
@@ -50,6 +52,7 @@ export interface Topic {
   is_company_specific: boolean | null;
   company: string | null;
   source_url: string | null;
+  topic_type: TopicType | null;
 }
 
 export const DSA_TAGS = [
@@ -212,5 +215,19 @@ export interface Resource {
   url: string | null;
   description: string | null;
   pillar_slug: string | null;
+  created_at: string;
+}
+
+// ── Solve attempts ──────────────────────────────────────────────────────────
+
+export type AttemptType = "first_solve" | "revision_solve" | "skimmed";
+
+export interface SolveAttempt {
+  id: string;
+  user_id: string;
+  topic_id: string;
+  attempt_type: AttemptType;
+  time_taken_mins: number | null;
+  attempted_at: string;
   created_at: string;
 }

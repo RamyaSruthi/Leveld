@@ -249,3 +249,29 @@ CREATE TABLE IF NOT EXISTS public.mindset_entries (
 ALTER TABLE public.mindset_entries ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own mindset entries" ON public.mindset_entries
   FOR ALL USING (auth.uid() = user_id);
+
+-- ── target_companies (simple list per user, stored in users table) ──────────
+-- Already exists as users.target_companies TEXT[]
+
+-- ── topic_type column on topics (coding_problem | concept | null) ───────────
+
+ALTER TABLE public.topics ADD COLUMN IF NOT EXISTS topic_type TEXT;
+
+-- ── solve_attempts (tracks every solve/revision with time taken) ────────────
+
+CREATE TABLE IF NOT EXISTS public.solve_attempts (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  topic_id        UUID NOT NULL REFERENCES public.topics(id) ON DELETE CASCADE,
+  attempt_type    TEXT NOT NULL CHECK (attempt_type IN ('first_solve', 'revision_solve', 'skimmed')),
+  time_taken_mins INT,
+  attempted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.solve_attempts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own solve attempts" ON public.solve_attempts
+  FOR ALL USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS solve_attempts_user_topic
+  ON public.solve_attempts (user_id, topic_id, attempted_at DESC);
