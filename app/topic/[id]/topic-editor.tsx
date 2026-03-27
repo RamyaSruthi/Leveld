@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Topic, UserTopic, Note, AiReview, PillarConfig } from "@/lib/types";
@@ -38,39 +38,75 @@ export function TopicEditor({
   const [isPending, startTransition] = useTransition();
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentRef = useRef(content);
 
-  function handleChange(html: string) {
-    setContent(html);
-    setIsDirty(true);
-    setError(null);
-  }
+  // Keep ref in sync for the save callback
+  useEffect(() => {
+    contentRef.current = content;
+  }, [content]);
 
-  function handleSave() {
+  const doSave = useCallback(() => {
+    const currentContent = contentRef.current;
+    setSaveStatus("saving");
     startTransition(async () => {
       setError(null);
       try {
         const result = await saveNote({
           userId,
           topicId: topic.id,
-          content,
+          content: currentContent,
           currentVersion: latestNote?.version ?? 0,
         });
         if (result.noteId) {
           setSavedNoteId(result.noteId);
           setIsDirty(false);
+          setSaveStatus("saved");
           // Auto-run gap analysis
           handleGapAnalysis(result.noteId);
         }
       } catch {
         setError("Failed to save. Please try again.");
+        setSaveStatus("idle");
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, topic.id, latestNote?.version]);
+
+  // Auto-save with debounce
+  useEffect(() => {
+    if (!isDirty) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      doSave();
+    }, 1500);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [isDirty, content, doSave]);
+
+  // Clear "saved" indicator after a few seconds
+  useEffect(() => {
+    if (saveStatus === "saved") {
+      const t = setTimeout(() => setSaveStatus("idle"), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [saveStatus]);
+
+  function handleChange(html: string) {
+    setContent(html);
+    setIsDirty(true);
+    setSaveStatus("idle");
+    setError(null);
   }
 
   async function handleGapAnalysis(noteId: string) {
     setAnalysisRunning(true);
     try {
-      const review = await runGapAnalysis({ noteId, userId, content });
+      const review = await runGapAnalysis({ noteId, userId, content: contentRef.current });
       if (review) setAiReview(review);
     } catch {
       // Gap analysis failing shouldn't block the user
@@ -331,10 +367,22 @@ export function TopicEditor({
 
       {/* ── Right panel — editor (75%) ────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-10 pt-5 pb-1 shrink-0">
+        <div className="px-10 pt-5 pb-1 shrink-0 flex items-center justify-between">
           <p className="font-mono text-[10px] text-ink-faint">
             Type <kbd className="px-1 py-0.5 rounded bg-hover border border-line text-[10px]">/</kbd> for headings, lists, code blocks and more
           </p>
+          {/* Auto-save status */}
+          <div className="font-mono text-[10px] flex items-center gap-1.5">
+            {saveStatus === "saving" && (
+              <span className="text-ink-muted">Saving…</span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="text-status-green">Saved ✓</span>
+            )}
+            {saveStatus === "idle" && isDirty && (
+              <span className="text-ink-faint">Unsaved</span>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-10 py-4">
@@ -346,19 +394,7 @@ export function TopicEditor({
         </div>
 
         {error && (
-          <p className="px-10 pb-1 text-[12px] text-red-600">{error}</p>
-        )}
-
-        {isDirty && (
-          <div className="px-10 py-3 border-t border-line shrink-0">
-            <button
-              onClick={handleSave}
-              disabled={isPending}
-              className="px-4 py-2 rounded-md text-[12px] font-medium bg-purple text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-            >
-              {isPending ? "Saving…" : "Save notes"}
-            </button>
-          </div>
+          <p className="px-10 pb-2 text-[12px] text-red-600">{error}</p>
         )}
       </div>
 

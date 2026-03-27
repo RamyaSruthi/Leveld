@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { MindsetEntry } from "@/lib/types";
@@ -27,31 +27,71 @@ export function MindsetEditor({ entry, userId }: Props) {
   const [content, setContent] = useState(entry.content);
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleRef = useRef(title);
+  const contentRef = useRef(content);
+
+  // Keep refs in sync
+  useEffect(() => { titleRef.current = title; }, [title]);
+  useEffect(() => { contentRef.current = content; }, [content]);
+
+  const doSave = useCallback(() => {
+    setSaveStatus("saving");
+    startTransition(async () => {
+      setError(null);
+      try {
+        await saveMindsetEntry({
+          id: entry.id,
+          userId,
+          title: titleRef.current,
+          content: contentRef.current,
+        });
+        setIsDirty(false);
+        setSaveStatus("saved");
+      } catch {
+        setError("Failed to save. Please try again.");
+        setSaveStatus("idle");
+      }
+    });
+  }, [entry.id, userId]);
+
+  // Auto-save with debounce
+  useEffect(() => {
+    if (!isDirty) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      doSave();
+    }, 1500);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [isDirty, title, content, doSave]);
+
+  // Clear "saved" indicator after a few seconds
+  useEffect(() => {
+    if (saveStatus === "saved") {
+      const t = setTimeout(() => setSaveStatus("idle"), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [saveStatus]);
 
   function handleContentChange(html: string) {
     setContent(html);
     setIsDirty(true);
+    setSaveStatus("idle");
     setError(null);
   }
 
   function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setTitle(e.target.value);
     setIsDirty(true);
+    setSaveStatus("idle");
     setError(null);
-  }
-
-  function handleSave() {
-    startTransition(async () => {
-      setError(null);
-      try {
-        await saveMindsetEntry({ id: entry.id, userId, title, content });
-        setIsDirty(false);
-      } catch {
-        setError("Failed to save. Please try again.");
-      }
-    });
   }
 
   function handleDelete() {
@@ -75,6 +115,18 @@ export function MindsetEditor({ entry, userId }: Props) {
           </Link>
         </div>
         <div className="flex items-center gap-3">
+          {/* Auto-save status */}
+          <div className="font-mono text-[10px] flex items-center gap-1.5">
+            {saveStatus === "saving" && (
+              <span className="text-ink-muted">Saving…</span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="text-status-green">Saved ✓</span>
+            )}
+            {saveStatus === "idle" && isDirty && (
+              <span className="text-ink-faint">Unsaved</span>
+            )}
+          </div>
           <button
             onClick={handleDelete}
             disabled={isPending}
@@ -117,19 +169,7 @@ export function MindsetEditor({ entry, userId }: Props) {
       </div>
 
       {error && (
-        <p className="px-10 pb-1 text-[12px] text-red-600">{error}</p>
-      )}
-
-      {isDirty && (
-        <div className="px-10 py-3 border-t border-line shrink-0">
-          <button
-            onClick={handleSave}
-            disabled={isPending}
-            className="px-4 py-2 rounded-md text-[12px] font-medium bg-purple text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-          >
-            {isPending ? "Saving…" : "Save"}
-          </button>
-        </div>
+        <p className="px-10 pb-2 text-[12px] text-red-600">{error}</p>
       )}
     </div>
   );
