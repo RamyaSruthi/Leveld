@@ -101,6 +101,27 @@ export async function deleteTopic({ topicId, userId }: { topicId: string; userId
     .eq("user_id", userId);
 }
 
+export async function updateTopicTag({
+  topicId,
+  userId,
+  tag,
+}: {
+  topicId: string;
+  userId: string;
+  tag: string | null;
+}) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("topics")
+    .update({ tag })
+    .eq("id", topicId)
+    .eq("user_id", userId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}
+
 export async function moveTopicToPillar({
   topicId,
   userId,

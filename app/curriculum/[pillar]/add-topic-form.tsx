@@ -5,12 +5,19 @@ import { useRouter } from "next/navigation";
 import { createTopic } from "./actions";
 import { DSA_TAGS, DSA_ROADMAPS } from "@/lib/types";
 
-export function AddTopicForm({ pillar, userId }: { pillar: string; userId: string }) {
+export function AddTopicForm({
+  pillar,
+  userId,
+  existingTags,
+}: {
+  pillar: string;
+  userId: string;
+  existingTags?: string[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  // DSA-only fields
   const [tag, setTag] = useState("");
   const [roadmap, setRoadmap] = useState("");
   const [isCompanySpecific, setIsCompanySpecific] = useState(false);
@@ -39,8 +46,8 @@ export function AddTopicForm({ pillar, userId }: { pillar: string; userId: strin
         userId,
         title: title.trim(),
         description: description.trim(),
+        tag: tag.trim() || undefined,
         ...(isDsa && {
-          tag: tag || undefined,
           roadmap: roadmap || undefined,
           is_company_specific: isCompanySpecific,
           company: isCompanySpecific ? company.trim() : undefined,
@@ -91,53 +98,74 @@ export function AddTopicForm({ pillar, userId }: { pillar: string; userId: strin
         />
       </div>
 
+      {/* Tag — available for ALL pillars */}
+      <div>
+        <label className="block text-[11px] font-mono text-ink-muted mb-1">
+          Tag
+        </label>
+        {isDsa ? (
+          <select
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+            className="
+              w-full h-9 px-3 rounded-md text-[13px]
+              bg-surface border border-line text-ink
+              focus:outline-none focus:border-line-subtle
+              appearance-none cursor-pointer
+            "
+          >
+            <option value="">Select tag…</option>
+            {DSA_TAGS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        ) : (
+          <>
+            <input
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              placeholder="e.g. Kafka, React, Spring Boot…"
+              list="existing-tags"
+              className="
+                w-full h-9 px-3 rounded-md text-[13px]
+                bg-surface border border-line text-ink
+                placeholder:text-ink-faint
+                focus:outline-none focus:border-line-subtle
+              "
+            />
+            {existingTags && existingTags.length > 0 && (
+              <datalist id="existing-tags">
+                {existingTags.map((t) => (
+                  <option key={t} value={t} />
+                ))}
+              </datalist>
+            )}
+          </>
+        )}
+      </div>
+
       {/* DSA-specific fields */}
       {isDsa && (
         <>
-          <div className="grid grid-cols-2 gap-3">
-            {/* Tag */}
-            <div>
-              <label className="block text-[11px] font-mono text-ink-muted mb-1">
-                Topic / Tag
-              </label>
-              <select
-                value={tag}
-                onChange={(e) => setTag(e.target.value)}
-                className="
-                  w-full h-9 px-3 rounded-md text-[13px]
-                  bg-surface border border-line text-ink
-                  focus:outline-none focus:border-line-subtle
-                  appearance-none cursor-pointer
-                "
-              >
-                <option value="">Select tag…</option>
-                {DSA_TAGS.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Roadmap */}
-            <div>
-              <label className="block text-[11px] font-mono text-ink-muted mb-1">
-                Roadmap
-              </label>
-              <select
-                value={roadmap}
-                onChange={(e) => setRoadmap(e.target.value)}
-                className="
-                  w-full h-9 px-3 rounded-md text-[13px]
-                  bg-surface border border-line text-ink
-                  focus:outline-none focus:border-line-subtle
-                  appearance-none cursor-pointer
-                "
-              >
-                <option value="">Select roadmap…</option>
-                {DSA_ROADMAPS.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-[11px] font-mono text-ink-muted mb-1">
+              Roadmap
+            </label>
+            <select
+              value={roadmap}
+              onChange={(e) => setRoadmap(e.target.value)}
+              className="
+                w-full h-9 px-3 rounded-md text-[13px]
+                bg-surface border border-line text-ink
+                focus:outline-none focus:border-line-subtle
+                appearance-none cursor-pointer
+              "
+            >
+              <option value="">Select roadmap…</option>
+              {DSA_ROADMAPS.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
           </div>
 
           {/* Company specific */}

@@ -3,8 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/nav";
 import { getUserPillars } from "@/lib/pillars";
-import { AddTopicForm } from "./add-topic-form";
-import { TopicRow } from "./topic-row";
+import { TopicList } from "./topic-list";
 import { PillarResources } from "./pillar-resources";
 import type { TopicWithProgress, Resource } from "@/lib/types";
 
@@ -98,23 +97,13 @@ export default async function PillarPage({ params }: Props) {
           </div>
         )}
 
-        {/* Topic list */}
-        <div className="bg-surface rounded-lg border border-line overflow-hidden">
-          {topicsWithProgress.length === 0 ? (
-            <div className="px-4 py-10 text-center">
-              <p className="text-[13px] text-ink-dim mb-1">No topics yet</p>
-              <p className="text-[12px] text-ink-muted">
-                Add your first topic below
-              </p>
-            </div>
-          ) : (
-            topicsWithProgress.map((t) => (
-              <TopicRow key={t.id} topic={t} userId={user.id} pillars={pillars} />
-            ))
-          )}
-
-          <AddTopicForm pillar={slug} userId={user.id} />
-        </div>
+        {/* Topic list with tag filtering */}
+        <TopicList
+          topics={topicsWithProgress}
+          userId={user.id}
+          pillarSlug={slug}
+          pillars={pillars}
+        />
 
         {/* Pillar resources */}
         <PillarResources

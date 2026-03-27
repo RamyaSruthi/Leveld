@@ -2,21 +2,26 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { toggleTopicDone, moveTopicToPillar } from "./actions";
+import { toggleTopicDone, moveTopicToPillar, updateTopicTag } from "./actions";
 import type { PillarConfig, TopicWithProgress } from "@/lib/types";
 
 interface Props {
   topic: TopicWithProgress;
   userId: string;
   pillars: PillarConfig[];
+  existingTags?: string[];
 }
 
-export function TopicRow({ topic, userId, pillars }: Props) {
+export function TopicRow({ topic, userId, pillars, existingTags }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isDone, setIsDone] = useState(topic.user_topic?.status === "done");
   const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const [showTagInput, setShowTagInput] = useState(false);
+  const [tagValue, setTagValue] = useState(topic.tag || "");
   const moveRef = useRef<HTMLDivElement>(null);
+  const tagRef = useRef<HTMLDivElement>(null);
+  const tagInputRef = useRef<HTMLInputElement>(null);
   const status = topic.user_topic?.status ?? "not_started";
   const lastStudied = topic.user_topic?.last_studied_at;
 
@@ -25,7 +30,11 @@ export function TopicRow({ topic, userId, pillars }: Props) {
     setIsDone(topic.user_topic?.status === "done");
   }, [topic.user_topic?.status]);
 
-  // Close menu on outside click
+  useEffect(() => {
+    setTagValue(topic.tag || "");
+  }, [topic.tag]);
+
+  // Close move menu on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (moveRef.current && !moveRef.current.contains(e.target as Node)) {
@@ -36,9 +45,23 @@ export function TopicRow({ topic, userId, pillars }: Props) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showMoveMenu]);
 
+  // Close tag input on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (tagRef.current && !tagRef.current.contains(e.target as Node)) {
+        handleTagSave();
+      }
+    }
+    if (showTagInput) {
+      document.addEventListener("mousedown", handleClickOutside);
+      tagInputRef.current?.focus();
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTagInput]);
+
   function handleRowClick() {
-    // Block navigation while toggle is in flight to avoid race condition
-    if (isPending) return;
+    if (isPending || showTagInput) return;
     router.push(`/topic/${topic.id}`);
   }
 
@@ -54,6 +77,33 @@ export function TopicRow({ topic, userId, pillars }: Props) {
 
   function handleLinkClick(e: React.MouseEvent) {
     e.stopPropagation();
+  }
+
+  function handleTagSave() {
+    const trimmed = tagValue.trim();
+    const oldTag = topic.tag || "";
+    setShowTagInput(false);
+    if (trimmed !== oldTag) {
+      startTransition(async () => {
+        await updateTopicTag({
+          topicId: topic.id,
+          userId,
+          tag: trimmed || null,
+        });
+        router.refresh();
+      });
+    }
+  }
+
+  function handleTagKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleTagSave();
+    }
+    if (e.key === "Escape") {
+      setTagValue(topic.tag || "");
+      setShowTagInput(false);
+    }
   }
 
   return (
@@ -90,36 +140,76 @@ export function TopicRow({ topic, userId, pillars }: Props) {
         >
           {topic.title}
         </p>
-        {(topic.tag || topic.roadmap || topic.is_company_specific || topic.source_url) && (
-          <div className="flex flex-wrap gap-1.5">
-            {topic.tag && (
-              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-purple-light border border-purple-border text-purple">
-                {topic.tag}
-              </span>
-            )}
-            {topic.roadmap && (
-              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-base border border-line text-ink-muted">
-                {topic.roadmap}
-              </span>
-            )}
-            {topic.is_company_specific && (
-              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-status-amber-bg border border-status-amber-border text-status-amber">
-                {topic.company || "Company"}
-              </span>
-            )}
-            {topic.source_url && (
-              <a
-                href={topic.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={handleLinkClick}
-                className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-base border border-line text-ink-muted hover:text-ink hover:border-line-subtle transition-colors"
-              >
-                ↗ Link
-              </a>
-            )}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Tag display / edit */}
+          {showTagInput ? (
+            <div ref={tagRef} onClick={(e) => e.stopPropagation()}>
+              <input
+                ref={tagInputRef}
+                value={tagValue}
+                onChange={(e) => setTagValue(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                placeholder="Add tag…"
+                list={`tags-${topic.id}`}
+                className="
+                  font-mono text-[10px] px-2 py-0.5 rounded-full
+                  bg-surface border border-purple-border text-ink
+                  focus:outline-none focus:border-purple
+                  w-28
+                "
+              />
+              {existingTags && existingTags.length > 0 && (
+                <datalist id={`tags-${topic.id}`}>
+                  {existingTags.map((t) => (
+                    <option key={t} value={t} />
+                  ))}
+                </datalist>
+              )}
+            </div>
+          ) : topic.tag ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowTagInput(true);
+              }}
+              className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-purple-light border border-purple-border text-purple hover:bg-purple-border transition-colors"
+            >
+              {topic.tag}
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowTagInput(true);
+              }}
+              className="font-mono text-[10px] px-2 py-0.5 rounded-full border border-dashed border-line-subtle text-ink-faint hover:border-purple hover:text-purple opacity-0 group-hover:opacity-100 transition-all"
+            >
+              + tag
+            </button>
+          )}
+
+          {topic.roadmap && (
+            <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-base border border-line text-ink-muted">
+              {topic.roadmap}
+            </span>
+          )}
+          {topic.is_company_specific && (
+            <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-status-amber-bg border border-status-amber-border text-status-amber">
+              {topic.company || "Company"}
+            </span>
+          )}
+          {topic.source_url && (
+            <a
+              href={topic.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleLinkClick}
+              className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-base border border-line text-ink-muted hover:text-ink hover:border-line-subtle transition-colors"
+            >
+              ↗ Link
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
