@@ -151,6 +151,27 @@ export async function recordSolveAttemptFromList({
   revalidatePath("/", "layout");
 }
 
+export async function updateTopicType({
+  topicId,
+  userId,
+  topicType,
+}: {
+  topicId: string;
+  userId: string;
+  topicType: string | null;
+}) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("topics")
+    .update({ topic_type: topicType })
+    .eq("id", topicId)
+    .eq("user_id", userId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}
+
 export async function moveTopicToPillar({
   topicId,
   userId,

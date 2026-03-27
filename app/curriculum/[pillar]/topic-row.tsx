@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { toggleTopicDone, moveTopicToPillar, updateTopicTag, recordSolveAttemptFromList } from "./actions";
+import { toggleTopicDone, moveTopicToPillar, updateTopicTag, updateTopicType, recordSolveAttemptFromList } from "./actions";
 import type { PillarConfig, TopicWithProgress } from "@/lib/types";
 
 interface Props {
@@ -272,14 +272,42 @@ export function TopicRow({ topic, userId, pillars, existingTags }: Props) {
             </button>
           )}
 
-          {topic.topic_type && (
-            <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
-              topic.topic_type === "concept"
-                ? "bg-blue-50 border-blue-200 text-blue-600"
-                : "bg-green-50 border-green-200 text-green-600"
-            }`}>
-              {topic.topic_type === "concept" ? "📖 Concept" : "💻 Code"}
-            </span>
+          {topic.pillar === "dsa" && (
+            topic.topic_type ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const next = topic.topic_type === "coding_problem" ? "concept" : "coding_problem";
+                  startTransition(async () => {
+                    await updateTopicType({ topicId: topic.id, userId, topicType: next });
+                    router.refresh();
+                  });
+                }}
+                disabled={isPending}
+                title="Click to change type"
+                className={`font-mono text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                  topic.topic_type === "concept"
+                    ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
+                    : "bg-green-50 border-green-200 text-green-600 hover:bg-green-100"
+                }`}
+              >
+                {topic.topic_type === "concept" ? "📖 Concept" : "💻 Code"}
+              </button>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startTransition(async () => {
+                    await updateTopicType({ topicId: topic.id, userId, topicType: "coding_problem" });
+                    router.refresh();
+                  });
+                }}
+                disabled={isPending}
+                className="font-mono text-[10px] px-2 py-0.5 rounded-full border border-dashed border-line-subtle text-ink-faint hover:border-green-300 hover:text-green-600 opacity-0 group-hover:opacity-100 transition-all"
+              >
+                + type
+              </button>
+            )
           )}
           {topic.roadmap && (
             <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-base border border-line text-ink-muted">
