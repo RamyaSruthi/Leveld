@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Topic, UserTopic, Note, AiReview, PillarConfig, SolveAttempt } from "@/lib/types";
-import { saveNote, markTopicDone, markTopicInProgress, runGapAnalysis, reviewTopic, revisitTopic, recordSolveAttempt } from "./actions";
+import { saveNote, markTopicDone, markTopicInProgress, runGapAnalysis, reviewTopic, recordSolveAttempt } from "./actions";
 import dynamic from "next/dynamic";
 
 const RichEditor = dynamic(
@@ -38,12 +38,13 @@ export function TopicEditor({
   const [lastStudiedAt, setLastStudiedAt] = useState(userTopic?.last_studied_at ?? null);
   const [savedNoteId, setSavedNoteId] = useState(latestNote?.id ?? null);
   const [solveAttempts, setSolveAttempts] = useState<SolveAttempt[]>(initialSolveAttempts);
-  // Time-taken prompt states
-  const [showTimePrompt, setShowTimePrompt] = useState(false);
-  const [timeTaken, setTimeTaken] = useState("");
-  const [pendingAction, setPendingAction] = useState<"mark_done" | "revision_solve" | null>(null);
-  // Revision mode states
-  const [showRevisionChoice, setShowRevisionChoice] = useState(false);
+  // Mark-done time prompt
+  const [showMarkDoneTime, setShowMarkDoneTime] = useState(false);
+  const [markDoneTimeTaken, setMarkDoneTimeTaken] = useState("");
+  // Review / Study-again panel
+  const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [reviewMethod, setReviewMethod] = useState<"skimmed" | "solved_again">("skimmed");
+  const [reviewTimeTaken, setReviewTimeTaken] = useState("");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [analysisRunning, setAnalysisRunning] = useState(false);
@@ -136,22 +137,21 @@ export function TopicEditor({
     }
   }
 
+  // ── Mark done (first time) ─────────────────────────────────────────────────
+
   function handleMarkDone() {
     if (isCodingProblem) {
-      // Show time prompt for coding problems
-      setPendingAction("mark_done");
-      setTimeTaken("");
-      setShowTimePrompt(true);
+      setMarkDoneTimeTaken("");
+      setShowMarkDoneTime(true);
       return;
     }
-    // Non-coding: mark done directly
     doMarkDone(null);
   }
 
   function doMarkDone(mins: number | null) {
     startTransition(async () => {
       await markTopicDone({ userId, topicId: topic.id });
-      if (isCodingProblem || mins) {
+      if (isCodingProblem) {
         await recordSolveAttempt({
           userId,
           topicId: topic.id,
@@ -160,38 +160,37 @@ export function TopicEditor({
         });
       }
       setStatus("done");
-      setShowTimePrompt(false);
-      setPendingAction(null);
+      setShowMarkDoneTime(false);
       router.refresh();
     });
+  }
+
+  function handleMarkDoneTimeSubmit() {
+    const mins = markDoneTimeTaken.trim() ? parseInt(markDoneTimeTaken.trim(), 10) : null;
+    doMarkDone(mins && !isNaN(mins) && mins > 0 ? mins : null);
   }
 
   function handleMarkInProgress() {
     startTransition(async () => {
       await markTopicInProgress({ userId, topicId: topic.id });
       setStatus("in_progress");
+      setShowReviewPanel(false);
       router.refresh();
     });
   }
 
-  // Sync status & lastStudiedAt from server after router.refresh()
+  // ── Sync from server ────────────────────────────────────────────────────────
+
   useEffect(() => {
     setStatus(userTopic?.status ?? "not_started");
     setLastStudiedAt(userTopic?.last_studied_at ?? null);
   }, [userTopic?.status, userTopic?.last_studied_at]);
 
-  // Sync solve attempts from server
   useEffect(() => {
     setSolveAttempts(initialSolveAttempts);
   }, [initialSolveAttempts]);
 
-  function handleRevisit() {
-    startTransition(async () => {
-      await revisitTopic({ userId, topicId: topic.id });
-      setLastStudiedAt(new Date().toISOString());
-      router.refresh();
-    });
-  }
+  // ── Derived state ───────────────────────────────────────────────────────────
 
   const isDone = status === "done";
   const isDueForReview =
@@ -199,14 +198,22 @@ export function TopicEditor({
     userTopic?.next_review_at != null &&
     new Date(userTopic.next_review_at) <= new Date();
 
-  function handleSkimmed(quality: number) {
+  // ── Unified review handler (used for both due-reviews and study-again) ─────
+
+  function handleStudyReview(quality: number) {
     startTransition(async () => {
-      await recordSolveAttempt({
-        userId,
-        topicId: topic.id,
-        attemptType: "skimmed",
-        timeTakenMins: null,
-      });
+      // For coding problems, record a solve attempt
+      if (isCodingProblem) {
+        const mins = reviewTimeTaken.trim() ? parseInt(reviewTimeTaken.trim(), 10) : null;
+        const validMins = mins && !isNaN(mins) && mins > 0 ? mins : null;
+        await recordSolveAttempt({
+          userId,
+          topicId: topic.id,
+          attemptType: reviewMethod === "solved_again" ? "revision_solve" : "skimmed",
+          timeTakenMins: reviewMethod === "solved_again" ? validMins : null,
+        });
+      }
+      // Update spaced repetition schedule
       await reviewTopic({
         userId,
         topicId: topic.id,
@@ -215,63 +222,9 @@ export function TopicEditor({
         currentEasiness: userTopic?.easiness_factor ?? 2.5,
         currentReviewCount: userTopic?.review_count ?? 0,
       });
-      setShowRevisionChoice(false);
-      router.refresh();
-    });
-  }
-
-  function handleSolvedAgainPrompt() {
-    // Show time prompt for "solved again"
-    setPendingAction("revision_solve");
-    setTimeTaken("");
-    setShowTimePrompt(true);
-  }
-
-  function doRevisionSolve(mins: number | null, quality: number) {
-    startTransition(async () => {
-      await recordSolveAttempt({
-        userId,
-        topicId: topic.id,
-        attemptType: "revision_solve",
-        timeTakenMins: mins,
-      });
-      await reviewTopic({
-        userId,
-        topicId: topic.id,
-        quality,
-        currentInterval: userTopic?.interval_days ?? 1,
-        currentEasiness: userTopic?.easiness_factor ?? 2.5,
-        currentReviewCount: userTopic?.review_count ?? 0,
-      });
-      setShowTimePrompt(false);
-      setShowRevisionChoice(false);
-      setPendingAction(null);
-      router.refresh();
-    });
-  }
-
-  function handleTimePromptSubmit() {
-    const mins = timeTaken.trim() ? parseInt(timeTaken.trim(), 10) : null;
-    const validMins = mins && !isNaN(mins) && mins > 0 ? mins : null;
-
-    if (pendingAction === "mark_done") {
-      doMarkDone(validMins);
-    } else if (pendingAction === "revision_solve") {
-      // Default quality 4 (good) for solved-again
-      doRevisionSolve(validMins, 4);
-    }
-  }
-
-  function handleReview(quality: number) {
-    startTransition(async () => {
-      await reviewTopic({
-        userId,
-        topicId: topic.id,
-        quality,
-        currentInterval: userTopic?.interval_days ?? 1,
-        currentEasiness: userTopic?.easiness_factor ?? 2.5,
-        currentReviewCount: userTopic?.review_count ?? 0,
-      });
+      setShowReviewPanel(false);
+      setReviewMethod("skimmed");
+      setReviewTimeTaken("");
       router.refresh();
     });
   }
@@ -356,11 +309,11 @@ export function TopicEditor({
             </div>
           )}
 
-          {/* Time-taken prompt (overlay within panel) */}
-          {showTimePrompt && (
+          {/* ── Mark-done time prompt (coding problems, first solve) ──────── */}
+          {showMarkDoneTime && (
             <div className="bg-base border border-purple-border rounded-lg p-3 flex flex-col gap-2">
               <p className="font-mono text-[10px] text-purple uppercase tracking-widest">
-                {pendingAction === "mark_done" ? "Solved!" : "Solved Again!"}
+                Solved!
               </p>
               <p className="text-[11px] text-ink-dim">
                 How many minutes did it take?
@@ -369,10 +322,10 @@ export function TopicEditor({
                 autoFocus
                 type="number"
                 min="1"
-                value={timeTaken}
-                onChange={(e) => setTimeTaken(e.target.value)}
+                value={markDoneTimeTaken}
+                onChange={(e) => setMarkDoneTimeTaken(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleTimePromptSubmit();
+                  if (e.key === "Enter") handleMarkDoneTimeSubmit();
                 }}
                 placeholder="e.g. 25"
                 className="
@@ -384,22 +337,14 @@ export function TopicEditor({
               />
               <div className="flex gap-2">
                 <button
-                  onClick={handleTimePromptSubmit}
+                  onClick={handleMarkDoneTimeSubmit}
                   disabled={isPending}
                   className="flex-1 font-mono text-[11px] px-3 py-1.5 rounded-full bg-purple text-white hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {isPending ? "Saving…" : "Save"}
                 </button>
                 <button
-                  onClick={() => {
-                    // Skip time tracking, proceed without
-                    const action = pendingAction;
-                    if (action === "mark_done") {
-                      doMarkDone(null);
-                    } else if (action === "revision_solve") {
-                      doRevisionSolve(null, 4);
-                    }
-                  }}
+                  onClick={() => doMarkDone(null)}
                   disabled={isPending}
                   className="font-mono text-[11px] px-3 py-1.5 text-ink-muted hover:text-ink transition-colors"
                 >
@@ -409,111 +354,151 @@ export function TopicEditor({
             </div>
           )}
 
-          {/* Revisited button (for done topics) */}
-          {isDone && !showTimePrompt && !showRevisionChoice && (
-            <button
-              onClick={handleRevisit}
-              disabled={isPending}
-              className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-status-green-border text-status-green hover:bg-status-green-bg transition-colors disabled:opacity-50"
-            >
-              {isPending ? "Updating…" : "Mark revisited ↻"}
-            </button>
-          )}
+          {/* ── Review panel (shown for due reviews OR study-again) ──────── */}
+          {!showMarkDoneTime && (isDueForReview || showReviewPanel) && isDone && (
+            <div className="flex flex-col gap-2">
+              <p className="font-mono text-[10px] text-status-amber uppercase tracking-widest">
+                {isDueForReview ? "Review due" : "Study again"}
+              </p>
 
-          {/* Review UI (due) or Mark done/undone */}
-          {!showTimePrompt && !showRevisionChoice && (
-            <>
-              {isDueForReview ? (
+              {/* Coding problems: method selector */}
+              {isCodingProblem && (
                 <div className="flex flex-col gap-2">
-                  <p className="font-mono text-[10px] text-status-amber uppercase tracking-widest">
-                    Review due
-                  </p>
-                  {isCodingProblem ? (
-                    <>
-                      <p className="text-[11px] text-ink-dim">How did you review?</p>
-                      <button
-                        onClick={() => handleSkimmed(4)}
-                        disabled={isPending}
-                        className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-status-green-border text-status-green hover:bg-status-green-bg transition-colors disabled:opacity-50"
-                      >
-                        👀 Skimmed through
-                      </button>
-                      <button
-                        onClick={handleSolvedAgainPrompt}
-                        disabled={isPending}
-                        className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-purple text-purple hover:bg-purple hover:text-white transition-colors disabled:opacity-50"
-                      >
-                        💻 Solved again
-                      </button>
-                      <button
-                        onClick={() => handleReview(1)}
-                        disabled={isPending}
-                        className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                      >
-                        Forgot
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-[11px] text-ink-dim">How well did you recall this?</p>
-                      <div className="flex flex-col gap-1.5">
-                        <button
-                          onClick={() => handleReview(1)}
-                          disabled={isPending}
-                          className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                        >
-                          Forgot
-                        </button>
-                        <button
-                          onClick={() => handleReview(3)}
-                          disabled={isPending}
-                          className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-status-amber-border text-status-amber hover:bg-status-amber-bg transition-colors disabled:opacity-50"
-                        >
-                          Hard
-                        </button>
-                        <button
-                          onClick={() => handleReview(4)}
-                          disabled={isPending}
-                          className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-status-green-border text-status-green hover:bg-status-green-bg transition-colors disabled:opacity-50"
-                        >
-                          Good
-                        </button>
-                        <button
-                          onClick={() => handleReview(5)}
-                          disabled={isPending}
-                          className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-purple text-purple hover:bg-purple hover:text-white transition-colors disabled:opacity-50"
-                        >
-                          Easy
-                        </button>
-                      </div>
-                    </>
+                  <p className="text-[11px] text-ink-dim">How did you review?</p>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setReviewMethod("skimmed")}
+                      className={`
+                        flex-1 font-mono text-[10px] px-2 py-1.5 rounded-md border transition-colors
+                        ${reviewMethod === "skimmed"
+                          ? "bg-purple text-white border-purple"
+                          : "bg-surface border-line text-ink-muted hover:border-line-subtle"
+                        }
+                      `}
+                    >
+                      👀 Skimmed
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReviewMethod("solved_again")}
+                      className={`
+                        flex-1 font-mono text-[10px] px-2 py-1.5 rounded-md border transition-colors
+                        ${reviewMethod === "solved_again"
+                          ? "bg-purple text-white border-purple"
+                          : "bg-surface border-line text-ink-muted hover:border-line-subtle"
+                        }
+                      `}
+                    >
+                      💻 Solved again
+                    </button>
+                  </div>
+
+                  {/* Time input (only for solved again) */}
+                  {reviewMethod === "solved_again" && (
+                    <div>
+                      <p className="text-[10px] text-ink-faint mb-1">Time taken (min)</p>
+                      <input
+                        type="number"
+                        min="1"
+                        value={reviewTimeTaken}
+                        onChange={(e) => setReviewTimeTaken(e.target.value)}
+                        placeholder="e.g. 25"
+                        className="
+                          w-full h-7 px-2 rounded-md text-[11px] font-mono
+                          bg-surface border border-line text-ink
+                          placeholder:text-ink-faint
+                          focus:outline-none focus:border-purple
+                        "
+                      />
+                    </div>
                   )}
-                  <button
-                    onClick={handleMarkInProgress}
-                    disabled={isPending}
-                    className="font-mono text-[10px] text-ink-muted hover:text-ink transition-colors text-left"
-                  >
-                    Mark undone
-                  </button>
                 </div>
-              ) : isDone ? (
+              )}
+
+              {/* Quality rating (same for ALL topic types) */}
+              <p className="text-[11px] text-ink-dim mt-1">How well did you recall?</p>
+              <div className="flex flex-col gap-1.5">
                 <button
-                  onClick={handleMarkInProgress}
+                  onClick={() => handleStudyReview(1)}
                   disabled={isPending}
-                  className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-line text-ink-muted hover:text-ink hover:border-line-subtle transition-colors"
+                  className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                 >
-                  Mark undone
+                  Forgot
                 </button>
-              ) : (
                 <button
-                  onClick={handleMarkDone}
+                  onClick={() => handleStudyReview(3)}
                   disabled={isPending}
-                  className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-purple text-purple hover:bg-purple hover:text-white transition-colors"
+                  className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-status-amber-border text-status-amber hover:bg-status-amber-bg transition-colors disabled:opacity-50"
                 >
-                  {status === "not_started" ? "Mark done" : "Mark done ✓"}
+                  Hard
+                </button>
+                <button
+                  onClick={() => handleStudyReview(4)}
+                  disabled={isPending}
+                  className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-status-green-border text-status-green hover:bg-status-green-bg transition-colors disabled:opacity-50"
+                >
+                  Good
+                </button>
+                <button
+                  onClick={() => handleStudyReview(5)}
+                  disabled={isPending}
+                  className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-purple text-purple hover:bg-purple hover:text-white transition-colors disabled:opacity-50"
+                >
+                  Easy
+                </button>
+              </div>
+              <button
+                onClick={handleMarkInProgress}
+                disabled={isPending}
+                className="font-mono text-[10px] text-ink-muted hover:text-ink transition-colors text-left"
+              >
+                Mark undone
+              </button>
+              {!isDueForReview && (
+                <button
+                  onClick={() => setShowReviewPanel(false)}
+                  className="font-mono text-[10px] text-ink-faint hover:text-ink-muted transition-colors text-left"
+                >
+                  Cancel
                 </button>
               )}
-            </>
+            </div>
+          )}
+
+          {/* ── Done but not due: Study again + Mark undone ──────────────── */}
+          {!showMarkDoneTime && isDone && !isDueForReview && !showReviewPanel && (
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  setReviewMethod("skimmed");
+                  setReviewTimeTaken("");
+                  setShowReviewPanel(true);
+                }}
+                disabled={isPending}
+                className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-purple text-purple hover:bg-purple hover:text-white transition-colors disabled:opacity-50"
+              >
+                Study again
+              </button>
+              <button
+                onClick={handleMarkInProgress}
+                disabled={isPending}
+                className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-line text-ink-muted hover:text-ink hover:border-line-subtle transition-colors"
+              >
+                Mark undone
+              </button>
+            </div>
+          )}
+
+          {/* ── Not done: Mark done button ──────────────────────────────── */}
+          {!showMarkDoneTime && !isDone && (
+            <button
+              onClick={handleMarkDone}
+              disabled={isPending}
+              className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-purple text-purple hover:bg-purple hover:text-white transition-colors"
+            >
+              {status === "not_started" ? "Mark done" : "Mark done ✓"}
+            </button>
           )}
 
           {/* Solve History */}
