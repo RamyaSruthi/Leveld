@@ -17,11 +17,13 @@ export function TopicRow({ topic, userId, pillars, existingTags }: Props) {
   const [isPending, startTransition] = useTransition();
   const [isDone, setIsDone] = useState(topic.user_topic?.status === "done");
   const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [showTagInput, setShowTagInput] = useState(false);
   const [showTimePrompt, setShowTimePrompt] = useState(false);
   const [timeTaken, setTimeTaken] = useState("");
   const [tagValue, setTagValue] = useState(topic.tag || "");
   const moveRef = useRef<HTMLDivElement>(null);
+  const typeRef = useRef<HTMLDivElement>(null);
   const tagRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const timeInputRef = useRef<HTMLInputElement>(null);
@@ -48,6 +50,17 @@ export function TopicRow({ topic, userId, pillars, existingTags }: Props) {
     if (showMoveMenu) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showMoveMenu]);
+
+  // Close type menu on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (typeRef.current && !typeRef.current.contains(e.target as Node)) {
+        setShowTypeMenu(false);
+      }
+    }
+    if (showTypeMenu) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showTypeMenu]);
 
   // Close tag input on outside click
   useEffect(() => {
@@ -273,41 +286,69 @@ export function TopicRow({ topic, userId, pillars, existingTags }: Props) {
           )}
 
           {topic.pillar === "dsa" && (
-            topic.topic_type ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const next = topic.topic_type === "coding_problem" ? "concept" : "coding_problem";
-                  startTransition(async () => {
-                    await updateTopicType({ topicId: topic.id, userId, topicType: next });
-                    router.refresh();
-                  });
-                }}
-                disabled={isPending}
-                title="Click to change type"
-                className={`font-mono text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-                  topic.topic_type === "concept"
-                    ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
-                    : "bg-green-50 border-green-200 text-green-600 hover:bg-green-100"
-                }`}
-              >
-                {topic.topic_type === "concept" ? "📖 Concept" : "💻 Code"}
-              </button>
-            ) : (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  startTransition(async () => {
-                    await updateTopicType({ topicId: topic.id, userId, topicType: "coding_problem" });
-                    router.refresh();
-                  });
-                }}
-                disabled={isPending}
-                className="font-mono text-[10px] px-2 py-0.5 rounded-full border border-dashed border-line-subtle text-ink-faint hover:border-green-300 hover:text-green-600 opacity-0 group-hover:opacity-100 transition-all"
-              >
-                + type
-              </button>
-            )
+            <div ref={typeRef} className="relative" onClick={(e) => e.stopPropagation()}>
+              {topic.topic_type ? (
+                <button
+                  onClick={() => setShowTypeMenu((v) => !v)}
+                  disabled={isPending}
+                  className={`font-mono text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                    topic.topic_type === "concept"
+                      ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
+                      : "bg-green-50 border-green-200 text-green-600 hover:bg-green-100"
+                  }`}
+                >
+                  {topic.topic_type === "concept" ? "📖 Concept" : "💻 Code"}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowTypeMenu((v) => !v)}
+                  disabled={isPending}
+                  className="font-mono text-[10px] px-2 py-0.5 rounded-full border border-dashed border-line-subtle text-ink-faint hover:border-green-300 hover:text-green-600 opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  + type
+                </button>
+              )}
+
+              {showTypeMenu && (
+                <div className="absolute left-0 top-full mt-1 z-50 bg-surface border border-line rounded-lg shadow-lg py-1 min-w-[150px]">
+                  <p className="px-3 py-1.5 text-[10px] font-mono text-ink-faint uppercase tracking-wider">
+                    Set type
+                  </p>
+                  <button
+                    onClick={() => {
+                      setShowTypeMenu(false);
+                      startTransition(async () => {
+                        await updateTopicType({ topicId: topic.id, userId, topicType: "coding_problem" });
+                        router.refresh();
+                      });
+                    }}
+                    disabled={isPending}
+                    className={`w-full text-left px-3 py-1.5 text-[12px] hover:bg-hover transition-colors disabled:opacity-50 flex items-center gap-2 ${
+                      topic.topic_type === "coding_problem" ? "text-green-600 font-medium" : "text-ink-dim"
+                    }`}
+                  >
+                    💻 Coding Problem
+                    {topic.topic_type === "coding_problem" && <span className="ml-auto text-[10px]">✓</span>}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowTypeMenu(false);
+                      startTransition(async () => {
+                        await updateTopicType({ topicId: topic.id, userId, topicType: "concept" });
+                        router.refresh();
+                      });
+                    }}
+                    disabled={isPending}
+                    className={`w-full text-left px-3 py-1.5 text-[12px] hover:bg-hover transition-colors disabled:opacity-50 flex items-center gap-2 ${
+                      topic.topic_type === "concept" ? "text-blue-600 font-medium" : "text-ink-dim"
+                    }`}
+                  >
+                    📖 Concept
+                    {topic.topic_type === "concept" && <span className="ml-auto text-[10px]">✓</span>}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
           {topic.roadmap && (
             <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-base border border-line text-ink-muted">
