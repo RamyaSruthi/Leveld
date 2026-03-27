@@ -183,3 +183,21 @@ export interface MindsetEntry {
   updated_at: string;
   created_at: string;
 }
+
+export type ResourceCategory = "book" | "article" | "repo";
+
+export const RESOURCE_CATEGORIES: { value: ResourceCategory; label: string; icon: string }[] = [
+  { value: "book", label: "Books", icon: "📚" },
+  { value: "article", label: "Articles", icon: "📝" },
+  { value: "repo", label: "Git Repos", icon: "🔗" },
+];
+
+export interface Resource {
+  id: string;
+  user_id: string;
+  category: ResourceCategory;
+  title: string;
+  url: string | null;
+  description: string | null;
+  created_at: string;
+}

@@ -35,6 +35,9 @@ export async function Nav({ userEmail }: { userEmail?: string } = {}) {
         <Link href="/mindset" className="text-[12px] text-ink-muted hover:text-ink transition-colors">
           Mindset
         </Link>
+        <Link href="/resources" className="text-[12px] text-ink-muted hover:text-ink transition-colors">
+          Resources
+        </Link>
       </nav>
 
       {email && (

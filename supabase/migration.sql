@@ -199,6 +199,22 @@ CREATE POLICY "Users manage own pillars" ON public.pillars
 -- Migrate topics.pillar from enum to text so custom pillar slugs work
 ALTER TABLE public.topics ALTER COLUMN pillar TYPE TEXT USING pillar::TEXT;
 
+-- ── resources ────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.resources (
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  category    TEXT NOT NULL CHECK (category IN ('book', 'article', 'repo')),
+  title       TEXT NOT NULL,
+  url         TEXT,
+  description TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.resources ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own resources" ON public.resources
+  FOR ALL USING (auth.uid() = user_id);
+
 -- ── mindset_entries ──────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.mindset_entries (
