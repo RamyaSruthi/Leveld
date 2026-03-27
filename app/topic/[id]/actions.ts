@@ -170,6 +170,26 @@ export async function markTopicInProgress({
   revalidatePath("/", "layout");
 }
 
+// ── Revisit topic (update last_studied_at without changing status) ────────────
+
+export async function revisitTopic({
+  userId,
+  topicId,
+}: {
+  userId: string;
+  topicId: string;
+}) {
+  const supabase = await createClient();
+
+  await supabase
+    .from("user_topics")
+    .update({ last_studied_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("topic_id", topicId);
+
+  revalidatePath("/", "layout");
+}
+
 // ── Run AI gap analysis ───────────────────────────────────────────────────────
 
 export async function runGapAnalysis({

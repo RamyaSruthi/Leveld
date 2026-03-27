@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Topic, UserTopic, Note, AiReview, PillarConfig } from "@/lib/types";
-import { saveNote, markTopicDone, markTopicInProgress, runGapAnalysis, reviewTopic } from "./actions";
+import { saveNote, markTopicDone, markTopicInProgress, runGapAnalysis, reviewTopic, revisitTopic } from "./actions";
 import dynamic from "next/dynamic";
 
 const RichEditor = dynamic(
@@ -33,6 +33,7 @@ export function TopicEditor({
   const [isDirty, setIsDirty] = useState(false);
   const [aiReview, setAiReview] = useState(initialAiReview);
   const [status, setStatus] = useState(userTopic?.status ?? "not_started");
+  const [lastStudiedAt, setLastStudiedAt] = useState(userTopic?.last_studied_at ?? null);
   const [savedNoteId, setSavedNoteId] = useState(latestNote?.id ?? null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -41,6 +42,15 @@ export function TopicEditor({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef(content);
+
+  function daysAgoText(dateStr: string) {
+    const diff = Math.floor(
+      (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (diff === 0) return "Today";
+    if (diff === 1) return "1 day ago";
+    return `${diff} days ago`;
+  }
 
   // Keep ref in sync for the save callback
   useEffect(() => {
@@ -131,10 +141,19 @@ export function TopicEditor({
     });
   }
 
-  // Sync status from server after router.refresh()
+  // Sync status & lastStudiedAt from server after router.refresh()
   useEffect(() => {
     setStatus(userTopic?.status ?? "not_started");
-  }, [userTopic?.status]);
+    setLastStudiedAt(userTopic?.last_studied_at ?? null);
+  }, [userTopic?.status, userTopic?.last_studied_at]);
+
+  function handleRevisit() {
+    startTransition(async () => {
+      await revisitTopic({ userId, topicId: topic.id });
+      setLastStudiedAt(new Date().toISOString());
+      router.refresh();
+    });
+  }
 
   const isDone = status === "done";
   const isDueForReview =
@@ -207,19 +226,44 @@ export function TopicEditor({
             </p>
           )}
 
-          {/* Status badge */}
+          {/* Status badge + last studied info */}
           {status !== "not_started" && (
-            <div>
-              {isDone ? (
-                <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-purple-light border border-purple-border text-purple">
-                  Done
-                </span>
-              ) : (
-                <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-status-green-bg border border-status-green-border text-status-green">
-                  In progress
-                </span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                {isDone ? (
+                  <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-purple-light border border-purple-border text-purple">
+                    Done
+                  </span>
+                ) : (
+                  <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-status-green-bg border border-status-green-border text-status-green">
+                    In progress
+                  </span>
+                )}
+              </div>
+              {lastStudiedAt && (
+                <p className="font-mono text-[10px] text-ink-muted">
+                  Last studied: {daysAgoText(lastStudiedAt)}
+                  <span className="text-ink-faint ml-1">
+                    ({new Date(lastStudiedAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })})
+                  </span>
+                </p>
               )}
             </div>
+          )}
+
+          {/* Revisited button (for done topics) */}
+          {isDone && (
+            <button
+              onClick={handleRevisit}
+              disabled={isPending}
+              className="w-full font-mono text-[11px] px-3 py-1.5 rounded-full border border-status-green-border text-status-green hover:bg-status-green-bg transition-colors disabled:opacity-50"
+            >
+              {isPending ? "Updating…" : "Mark revisited ↻"}
+            </button>
           )}
 
           {/* Review UI (due) or Mark done/undone */}
