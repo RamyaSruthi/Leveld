@@ -204,7 +204,7 @@ ALTER TABLE public.topics ALTER COLUMN pillar TYPE TEXT USING pillar::TEXT;
 CREATE TABLE IF NOT EXISTS public.resources (
   id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  category    TEXT NOT NULL CHECK (category IN ('book', 'article', 'repo')),
+  category    TEXT NOT NULL CHECK (category IN ('book', 'article', 'repo', 'course')),
   title       TEXT NOT NULL,
   url         TEXT,
   description TEXT,

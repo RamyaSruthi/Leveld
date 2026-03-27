@@ -184,12 +184,13 @@ export interface MindsetEntry {
   created_at: string;
 }
 
-export type ResourceCategory = "book" | "article" | "repo";
+export type ResourceCategory = "book" | "article" | "repo" | "course";
 
 export const RESOURCE_CATEGORIES: { value: ResourceCategory; label: string; icon: string }[] = [
   { value: "book", label: "Books", icon: "📚" },
   { value: "article", label: "Articles", icon: "📝" },
   { value: "repo", label: "Git Repos", icon: "🔗" },
+  { value: "course", label: "Courses / YouTube", icon: "🎬" },
 ];
 
 export interface Resource {
