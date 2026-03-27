@@ -53,6 +53,9 @@ export async function middleware(request: NextRequest) {
   if (!user && pathname.startsWith("/jobs")) {
     return NextResponse.redirect(new URL("/auth", request.url));
   }
+  if (!user && pathname.startsWith("/mindset")) {
+    return NextResponse.redirect(new URL("/auth", request.url));
+  }
 
   // Redirect authenticated users away from auth page
   if (user && pathname === "/auth") {

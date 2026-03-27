@@ -179,3 +179,18 @@ CREATE TABLE IF NOT EXISTS public.interview_rounds (
 ALTER TABLE public.interview_rounds ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own rounds" ON public.interview_rounds
   FOR ALL USING (auth.uid() = user_id);
+
+-- ── mindset_entries ──────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.mindset_entries (
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  content     TEXT NOT NULL DEFAULT '',
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.mindset_entries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own mindset entries" ON public.mindset_entries
+  FOR ALL USING (auth.uid() = user_id);
