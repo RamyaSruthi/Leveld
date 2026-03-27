@@ -216,12 +216,15 @@ export function DailyTargets({
                   onClick={() => handleToggleDone(target)}
                   disabled={isPending}
                   className={`
-                    w-4 h-4 rounded-[4px] border shrink-0 flex items-center justify-center transition-colors
-                    ${target.completed ? "bg-purple border-purple" : "border-line-subtle hover:border-purple"}
+                    w-[18px] h-[18px] rounded-[5px] border-[1.5px] shrink-0 flex items-center justify-center transition-all duration-200
+                    ${target.completed
+                      ? "bg-purple border-purple shadow-sm shadow-purple/20"
+                      : "border-line-subtle hover:border-purple hover:shadow-sm hover:shadow-purple/10"
+                    }
                   `}
                 >
                   {target.completed && (
-                    <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                    <svg width="9" height="7" viewBox="0 0 8 6" fill="none" className="animate-checkmark">
                       <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}

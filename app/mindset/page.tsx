@@ -22,14 +22,14 @@ export default async function MindsetPage() {
     <div className="min-h-screen bg-base">
       <Nav userEmail={user?.email} />
 
-      <main className="max-w-3xl mx-auto px-6 py-10">
+      <main className="max-w-3xl mx-auto px-6 py-10 animate-fade-in">
         {/* Header */}
         <div className="flex items-end justify-between mb-8">
           <div>
-            <h1 className="text-[20px] font-semibold text-ink tracking-tight">
+            <h1 className="text-[22px] font-semibold text-ink tracking-tight">
               Mindset
             </h1>
-            <p className="text-[12px] text-ink-muted mt-1">
+            <p className="text-[13px] text-ink-muted mt-1">
               Ideas, mental models, and frameworks you&apos;re building.
             </p>
           </div>

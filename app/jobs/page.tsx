@@ -74,13 +74,13 @@ export default async function JobsPage() {
   return (
     <div className="min-h-screen bg-base">
       <Nav userEmail={user?.email} />
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-6 py-8 animate-fade-in">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-[20px] font-semibold text-ink tracking-tight">Job Applications</h1>
-            <p className="text-[12px] text-ink-muted mt-0.5">
+            <h1 className="text-[22px] font-semibold text-ink tracking-tight">Job Applications</h1>
+            <p className="text-[13px] text-ink-muted mt-0.5">
               {stats.total} application{stats.total !== 1 ? "s" : ""}
             </p>
           </div>
@@ -116,9 +116,10 @@ export default async function JobsPage() {
 
         {/* List */}
         {apps.length === 0 ? (
-          <div className="bg-surface rounded-lg border border-line px-6 py-12 text-center">
+          <div className="bg-surface rounded-xl border border-line/60 px-6 py-16 text-center">
+            <p className="text-[28px] mb-3">📋</p>
             <p className="text-[14px] font-medium text-ink mb-1">No applications yet</p>
-            <p className="text-[12px] text-ink-muted">Add your first job application above</p>
+            <p className="text-[12px] text-ink-muted">Add your first job application to start tracking</p>
           </div>
         ) : (
           <ApplicationsList

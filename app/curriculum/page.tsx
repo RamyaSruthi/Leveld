@@ -38,18 +38,18 @@ export default async function CurriculumPage() {
   return (
     <div className="min-h-screen bg-base">
       <Nav userEmail={user?.email} />
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-6 py-8 animate-fade-in">
         <div className="flex items-end justify-between mb-1">
-          <h1 className="text-[20px] font-semibold text-ink tracking-tight">
+          <h1 className="text-[22px] font-semibold text-ink tracking-tight">
             Curriculum
           </h1>
           <PillarManager pillars={pillars} userId={user.id} />
         </div>
-        <p className="text-[13px] text-ink-dim mb-8">
+        <p className="text-[13px] text-ink-muted mb-8">
           {totalDone} of {totalTopics} topics complete
         </p>
 
-        <div className="space-y-6">
+        <div className="space-y-3">
           {pillars.map((pillar) => {
             const pillarTopics = (topics ?? []).filter(
               (t) => t.pillar === pillar.slug
@@ -65,28 +65,44 @@ export default async function CurriculumPage() {
               <Link
                 key={pillar.slug}
                 href={`/curriculum/${pillar.slug}`}
-                className="block bg-surface rounded-lg border border-line hover:border-line-subtle transition-colors overflow-hidden"
+                className="group block bg-surface rounded-xl border border-line hover:border-line-subtle hover:shadow-sm transition-all duration-200 overflow-hidden"
               >
-                <div className="px-4 py-3.5 flex items-center gap-3">
+                <div className="px-5 py-4 flex items-center gap-3.5">
                   <span
-                    className="w-2 h-2 rounded-full shrink-0"
+                    className="w-2.5 h-2.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-125"
                     style={{ backgroundColor: pillar.color }}
                   />
-                  <span className="flex-1 text-[14px] font-medium text-ink">
-                    {pillar.label}
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[14px] font-medium text-ink group-hover:text-ink transition-colors">
+                      {pillar.label}
+                    </span>
+                    {pillarTopics.length > 0 && (
+                      <span className="ml-2 font-mono text-[11px] text-ink-faint">
+                        {done}/{pillarTopics.length}
+                      </span>
+                    )}
+                  </div>
+                  {pillarTopics.length === 0 ? (
+                    <span className="font-mono text-[11px] text-ink-faint">
+                      No topics yet
+                    </span>
+                  ) : (
+                    <span className="font-mono text-[13px] font-medium text-ink-dim">
+                      {pct}%
+                    </span>
+                  )}
+                  <span className="text-ink-faint text-[12px] opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all duration-200">
+                    →
                   </span>
-                  <span className="font-mono text-[11px] text-ink-muted">
-                    {pillarTopics.length === 0
-                      ? "No topics yet"
-                      : `${done}/${pillarTopics.length} · ${pct}%`}
-                  </span>
-                  <span className="text-ink-faint text-[12px]">→</span>
                 </div>
                 {pillarTopics.length > 0 && (
-                  <div className="h-0.5 bg-line overflow-hidden">
+                  <div className="h-1 bg-line/40 overflow-hidden">
                     <div
-                      className="h-full bg-purple transition-all"
-                      style={{ width: `${pct}%` }}
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{
+                        width: `${pct}%`,
+                        background: `linear-gradient(90deg, ${pillar.color}, ${pillar.color}99)`,
+                      }}
                     />
                   </div>
                 )}

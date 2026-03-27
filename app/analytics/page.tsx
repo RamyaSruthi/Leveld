@@ -133,8 +133,8 @@ export default async function AnalyticsPage() {
   return (
     <div className="min-h-screen bg-base">
       <Nav userEmail={user?.email} />
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <h1 className="text-[20px] font-semibold text-ink tracking-tight mb-6">
+      <div className="max-w-5xl mx-auto px-6 py-8 animate-fade-in">
+        <h1 className="text-[22px] font-semibold text-ink tracking-tight mb-6">
           Analytics
         </h1>
 
@@ -218,12 +218,16 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className="bg-surface rounded-lg border border-line px-4 py-3">
-      <p className="text-[10px] font-mono text-ink-muted uppercase tracking-widest mb-1">
+    <div className={`rounded-xl border px-4 py-4 transition-all duration-200 hover:shadow-sm ${
+      accent
+        ? "bg-purple-light border-purple-border"
+        : "bg-surface border-line"
+    }`}>
+      <p className="text-[10px] font-mono text-ink-muted uppercase tracking-widest mb-1.5">
         {label}
       </p>
       <p
-        className={`font-mono text-[20px] font-medium leading-none ${
+        className={`font-mono text-[22px] font-semibold leading-none tracking-tight ${
           accent ? "text-purple" : "text-ink"
         }`}
       >

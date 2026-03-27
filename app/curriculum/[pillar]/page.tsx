@@ -56,7 +56,7 @@ export default async function PillarPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-base">
       <Nav userEmail={user?.email} />
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-6 py-8 animate-fade-in">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 mb-4">
           <Link
@@ -72,12 +72,12 @@ export default async function PillarPage({ params }: Props) {
         </div>
 
         {/* Header */}
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2.5 mb-2">
           <span
-            className="w-2.5 h-2.5 rounded-full"
+            className="w-3 h-3 rounded-full"
             style={{ backgroundColor: pillar.color }}
           />
-          <h1 className="text-[20px] font-semibold text-ink tracking-tight">
+          <h1 className="text-[22px] font-semibold text-ink tracking-tight">
             {pillar.label}
           </h1>
           {topicsWithProgress.length > 0 && (
@@ -89,10 +89,13 @@ export default async function PillarPage({ params }: Props) {
 
         {/* Progress bar */}
         {topicsWithProgress.length > 0 && (
-          <div className="h-0.5 bg-line rounded-full mb-6 overflow-hidden">
+          <div className="h-1.5 bg-line/40 rounded-full mb-6 overflow-hidden">
             <div
-              className="h-full bg-purple rounded-full transition-all"
-              style={{ width: `${pct}%` }}
+              className="h-full rounded-full transition-all duration-700 ease-out"
+              style={{
+                width: `${pct}%`,
+                background: `linear-gradient(90deg, ${pillar.color}, ${pillar.color}99)`,
+              }}
             />
           </div>
         )}

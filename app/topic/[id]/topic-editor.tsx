@@ -641,7 +641,7 @@ export function TopicEditor({
           {/* Auto-save status */}
           <div className="font-mono text-[10px] flex items-center gap-1.5">
             {saveStatus === "saving" && (
-              <span className="text-ink-muted">Saving…</span>
+              <span className="text-ink-muted animate-subtle-pulse">Saving…</span>
             )}
             {saveStatus === "saved" && (
               <span className="text-status-green">Saved ✓</span>

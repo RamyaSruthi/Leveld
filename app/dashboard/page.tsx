@@ -103,31 +103,39 @@ export default async function DashboardPage() {
     day: "numeric",
   });
 
+  // Time-of-day greeting
+  const hour = now.getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
     <div className="min-h-screen bg-base">
       <Nav userEmail={user?.email} />
 
-      <div className="max-w-5xl mx-auto px-6 py-8 flex gap-8">
+      <div className="max-w-5xl mx-auto px-6 py-8 flex gap-8 animate-fade-in">
         {/* ── Sidebar ── */}
         <aside className="w-[220px] shrink-0">
           <p className="text-[11px] font-mono text-ink-muted uppercase tracking-widest mb-4">
             Pillars
           </p>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {pillarStats.map(({ slug, total, pct }) => (
               <Link
                 key={slug}
                 href={`/curriculum/${slug}`}
-                className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-hover transition-colors"
+                className="group flex items-center gap-2.5 rounded-lg px-3 py-2 hover:bg-hover transition-all duration-200"
               >
                 <span
-                  className="w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ backgroundColor: colors[slug] ?? "#6c5ce7" }}
+                  className="w-2 h-2 rounded-full shrink-0 ring-2 ring-offset-1 ring-offset-white"
+                  style={{
+                    backgroundColor: colors[slug] ?? "#6c5ce7",
+                    ringColor: `${colors[slug] ?? "#6c5ce7"}40`,
+                  }}
                 />
                 <span className="flex-1 text-[12px] text-ink-dim group-hover:text-ink transition-colors truncate">
                   {labels[slug] ?? slug}
                 </span>
-                <span className="font-mono text-[10px] text-ink-muted">
+                <span className="font-mono text-[10px] text-ink-faint group-hover:text-ink-muted transition-colors">
                   {total === 0 ? "—" : `${pct}%`}
                 </span>
               </Link>
@@ -136,13 +144,22 @@ export default async function DashboardPage() {
 
           {/* Readiness score */}
           <div className="mt-6 pt-6 border-t border-line">
-            <p className="text-[11px] font-mono text-ink-muted uppercase tracking-widest mb-2">
+            <p className="text-[11px] font-mono text-ink-muted uppercase tracking-widest mb-3">
               Readiness
             </p>
-            <p className="font-mono text-[26px] font-medium text-purple leading-none">
-              {overallPct}
-            </p>
-            <p className="text-[11px] text-ink-muted mt-1">
+            <div className="flex items-end gap-2">
+              <p className="font-mono text-[32px] font-semibold text-purple leading-none tracking-tight">
+                {overallPct}
+                <span className="text-[14px] font-normal text-purple/50">%</span>
+              </p>
+            </div>
+            <div className="mt-2 h-1.5 bg-line/50 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple to-purple/70 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${overallPct}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-ink-muted mt-2">
               {totalDone} of {totalTopics} topics done
             </p>
           </div>
@@ -150,9 +167,12 @@ export default async function DashboardPage() {
 
         {/* ── Main content ── */}
         <main className="flex-1 min-w-0 space-y-8">
-          {/* Date header */}
+          {/* Greeting + date */}
           <div>
-            <p className="text-[13px] text-ink-muted">{dateStr}</p>
+            <h1 className="text-[22px] font-semibold text-ink tracking-tight">
+              {greeting} 👋
+            </h1>
+            <p className="text-[13px] text-ink-muted mt-0.5">{dateStr}</p>
           </div>
 
           {/* Daily targets */}
@@ -166,10 +186,16 @@ export default async function DashboardPage() {
 
           {/* Due reviews */}
           <section>
-            <p className="text-[11px] font-mono text-ink-muted uppercase tracking-widest mb-3">
-              Due for review{" "}
-              {dueReviews.length > 0 && `· ${dueReviews.length}`}
-            </p>
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-[11px] font-mono text-ink-muted uppercase tracking-widest">
+                Due for review
+              </p>
+              {dueReviews.length > 0 && (
+                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-status-amber-bg border border-status-amber-border text-status-amber">
+                  {dueReviews.length}
+                </span>
+              )}
+            </div>
             {dueReviews.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {dueReviews.map((t) => (
@@ -177,19 +203,24 @@ export default async function DashboardPage() {
                     key={t.id}
                     href={`/topic/${t.id}`}
                     className="
-                      px-3 py-1.5 rounded-full border border-status-amber-border
+                      group px-3 py-1.5 rounded-full border border-status-amber-border
                       bg-status-amber-bg text-status-amber
-                      font-mono text-[11px] hover:border-status-amber transition-colors
+                      font-mono text-[11px] hover:border-status-amber
+                      hover:shadow-sm transition-all duration-200
                     "
                   >
                     {t.title}
+                    <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                   </Link>
                 ))}
               </div>
             ) : (
-              <p className="text-[12px] text-ink-muted">
-                Nothing due for review today ✓
-              </p>
+              <div className="bg-status-green-bg/50 border border-status-green-border/50 rounded-lg px-4 py-3">
+                <p className="text-[12px] text-status-green flex items-center gap-2">
+                  <span className="text-[14px]">✓</span>
+                  Nothing due for review today
+                </p>
+              </div>
             )}
           </section>
         </main>

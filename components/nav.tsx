@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "./sign-out-button";
+import { NavLinks } from "./nav-links";
 
 export async function Nav({ userEmail }: { userEmail?: string } = {}) {
   // Only fetch user if email not passed in from parent page
@@ -12,37 +13,22 @@ export async function Nav({ userEmail }: { userEmail?: string } = {}) {
   }
 
   return (
-    <header className="h-11 bg-surface border-b border-line flex items-center px-6 gap-8 sticky top-0 z-10">
+    <header className="h-12 bg-white/80 backdrop-blur-md border-b border-line/60 flex items-center px-6 gap-6 sticky top-0 z-50">
       <Link
         href="/dashboard"
-        className="font-mono text-[13px] font-medium text-ink tracking-tight"
+        className="font-mono text-[14px] font-semibold text-ink tracking-tight flex items-center gap-2"
       >
+        <span className="w-5 h-5 rounded-md bg-purple flex items-center justify-center">
+          <span className="text-[10px] text-white font-bold">L</span>
+        </span>
         leveld
       </Link>
-      <nav className="flex items-center gap-6">
-        <Link href="/dashboard" className="text-[12px] text-ink-muted hover:text-ink transition-colors">
-          Dashboard
-        </Link>
-        <Link href="/curriculum" className="text-[12px] text-ink-muted hover:text-ink transition-colors">
-          Curriculum
-        </Link>
-        <Link href="/analytics" className="text-[12px] text-ink-muted hover:text-ink transition-colors">
-          Analytics
-        </Link>
-        <Link href="/jobs" className="text-[12px] text-ink-muted hover:text-ink transition-colors">
-          Jobs
-        </Link>
-        <Link href="/mindset" className="text-[12px] text-ink-muted hover:text-ink transition-colors">
-          Mindset
-        </Link>
-        <Link href="/resources" className="text-[12px] text-ink-muted hover:text-ink transition-colors">
-          Resources
-        </Link>
-      </nav>
+
+      <NavLinks />
 
       {email && (
         <div className="ml-auto flex items-center gap-4">
-          <span className="text-[11px] text-ink-faint truncate max-w-[180px]">{email}</span>
+          <span className="text-[11px] text-ink-faint truncate max-w-[180px] font-mono">{email}</span>
           <SignOutButton />
         </div>
       )}
