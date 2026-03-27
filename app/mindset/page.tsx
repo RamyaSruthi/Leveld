@@ -30,7 +30,7 @@ export default async function MindsetPage() {
               Mindset
             </h1>
             <p className="text-[12px] text-ink-muted mt-1">
-              Ideas, mental models, and frameworks you're building.
+              Ideas, mental models, and frameworks you&apos;re building.
             </p>
           </div>
         </div>
