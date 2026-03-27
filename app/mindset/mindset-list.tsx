@@ -71,7 +71,7 @@ export function MindsetList({ entries, userId }: Props) {
         </button>
       </div>
 
-      {/* Entry list */}
+      {/* Entry list — quote cards */}
       {entries.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-[13px] text-ink-muted">
@@ -79,28 +79,36 @@ export function MindsetList({ entries, userId }: Props) {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-5">
           {entries.map((entry) => {
-            const preview = stripHtml(entry.content);
+            const body = stripHtml(entry.content);
             return (
               <Link
                 key={entry.id}
                 href={`/mindset/${entry.id}`}
-                className="group flex items-start justify-between gap-4 p-4 rounded-lg border border-line bg-surface hover:border-purple/30 hover:bg-purple-light/30 transition-all"
+                className="group block rounded-xl border border-line bg-surface hover:border-purple/30 hover:shadow-sm transition-all"
               >
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-[14px] font-medium text-ink tracking-tight truncate group-hover:text-purple transition-colors">
+                <div className="relative pl-5 pr-5 py-5">
+                  {/* Quote accent bar */}
+                  <div className="absolute left-0 top-4 bottom-4 w-[3px] rounded-full bg-purple/60 group-hover:bg-purple transition-colors" />
+
+                  {/* Title */}
+                  <h3 className="text-[15px] font-semibold text-ink tracking-tight leading-snug group-hover:text-purple transition-colors">
                     {entry.title}
                   </h3>
-                  {preview && (
-                    <p className="text-[12px] text-ink-muted mt-1 line-clamp-2 leading-relaxed">
-                      {preview}
+
+                  {/* Full content as quote body */}
+                  {body && (
+                    <p className="mt-2.5 text-[13px] text-ink-dim leading-relaxed whitespace-pre-line">
+                      {body}
                     </p>
                   )}
+
+                  {/* Timestamp */}
+                  <span className="block mt-3 font-mono text-[10px] text-ink-faint">
+                    {timeAgo(entry.updated_at)}
+                  </span>
                 </div>
-                <span className="shrink-0 font-mono text-[10px] text-ink-faint mt-0.5">
-                  {timeAgo(entry.updated_at)}
-                </span>
               </Link>
             );
           })}
